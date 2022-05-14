@@ -1,0 +1,39 @@
+#! /usr/bin/env nix-shell
+#! nix-shell -i bash -p libimobiledevice usbmuxd
+
+# Nvm: #!/bin/bash
+
+set -e
+
+# Need to warm up sudo
+sudo echo
+
+sudo `which usbmuxd` -f &
+
+dt=$(date '+%Y-%m-%d %I-%M-%S %p')
+directory="$dt"
+mkdir "$directory"
+
+# Only compatible with iOS 3 and below: idevicebackup backup "$directory" #--udid 00008020-000D29613C61002E
+
+#idevicebackup2 info "$directory" # Show last backup
+echo "---------1"
+set +e
+output=$(sudo `which idevicebackup2` encryption on SuperBewn "$directory") # Provide password and encrypt backups
+res=$?
+#echo "$res"
+hasEnabledAlready=$(echo "$output" | grep -q 'Backup encryption is already enabled')
+if [ -z "$hasEnabledAlready" ]; then
+    # Allow nonzero exit codes to be ok
+    :
+else
+    # Error if exit code is nonzero
+    if [ "$res" != "0" ]; then
+	echo "$output"
+	exit "$res"
+    fi
+fi
+set -e
+echo "---------2"
+sudo `which idevicebackup2` --interactive backup --full "$directory" # Back up
+

@@ -1,0 +1,86 @@
+#! /usr/bin/env nix-shell
+#! nix-shell -i bash ./libimobiledevice/shell.nix
+
+# Nvm: #!/bin/bash
+
+set -e
+
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
+# Provide an existing directory in $1 to do an incremental backup:
+inc="$1"
+
+dt=$(date '+%Y-%m-%d %I-%M-%S %p')
+
+# Need to warm up sudo
+sudo echo 2>&1 | tee -a "$dt.log.txt"
+
+sudo `which usbmuxd` -f 2>&1 | tee -a "$dt.log.txt" &
+
+# Show some syslog output in the background as we go (so you can see why weird errors like this happen: { [...]
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [==================================================]  98% Finished
+# [================================================= ]  98% Finished
+# Receiving files
+# [=                                                 ]   0% (65.6 KB/2.6 GB)     
+# Received an error message from device: Input/output error (5)
+# [==================================================]  98% Finished2.6 GB)       
+# ErrorCode 104: Multiple errors uploading files (MBErrorDomain/104)
+# Received 466277 files from device.
+# Backup Failed (Error Code 104).
+# sebastian@MacBookPro:/run/media/sebastian/5F906D2039164F88$ echo $?
+# 152
+# })
+sudo idevicesyslog 2>&1 | tee -a "$inc$dt.log.txt" 1> /dev/null & # https://unix.stackexchange.com/questions/610329/is-it-safe-to-pipe-multiple-commands-output-to-the-same-file-simultaneously-usin : use tee's append option (`-a`)
+
+directory="$dt"
+mkdir "$directory"
+
+# Only compatible with iOS 3 and below: idevicebackup backup "$directory" #--udid 00008020-000D29613C61002E
+
+#idevicebackup2 info "$directory" # Show last backup
+echo "---------1" 2>&1 | tee -a "$inc$dt.log.txt"
+set +e
+output=$(sudo `which idevicebackup2` encryption on SuperBewn "$directory" 2>&1 | tee -a "$inc$dt.log.txt") # Provide password and encrypt backups
+res=$?
+#echo "$res"
+hasEnabledAlready=$(echo "$output" | grep -q 'Backup encryption is already enabled')
+if [ -z "$hasEnabledAlready" ]; then
+    # Allow nonzero exit codes to be ok
+    echo "Backup encryption is already enabled" 2>&1 | tee -a "$inc$dt.log.txt"
+    :
+else
+    # Error if exit code is nonzero
+    if [ "$res" != "0" ]; then
+	echo "$output" 2>&1 | tee -a "$inc$dt.syslog.txt"
+	exit "$res"
+    fi
+fi
+set -e
+echo "---------2" 2>&1 | tee -a "$inc$dt.log.txt"
+if [ -z "$inc" ]; then
+    sudo `which idevicebackup2` --interactive backup --full "$directory" 2>&1 | tee -a "$inc$dt.log.txt" # Back up
+else
+    sudo `which idevicebackup2` --interactive backup "$inc" 2>&1 | tee -a "$inc$dt.log.txt" # Back up
+fi
+
+sudo pkill idevicesyslog
+sleep 8
+# Sometimes it doesn't kill gracefully, so kill it completely:
+sudo pkill -9 idevicesyslog
+sudo pkill usbmuxd
