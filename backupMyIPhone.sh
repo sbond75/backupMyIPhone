@@ -7,19 +7,62 @@ set -e
 
 continuous="$2" # (Optional) Set to 1 to make the backup wait for WiFi
 firstTime="$3" # (Optional) Set to 1 to re-setup device (only for `continuous` mode for now)
+dryRun="$4" # (Optional) [Only works when $continuous == 1] Set to 1 to do a dry run (no changes to backup history + it will be verbose with `set -x`)
+username="$6" # Required when $continuous == 1
 
-if [ "$continuous" != "1" && "$EUID" -ne 0 ]
+if [ "$dryRun" == "1" ]; then
+    set -x
+fi
+
+if [ "$continuous" != "1" ] && [ "$EUID" -ne 0 ]
   then echo "Please run as root"
   exit
 fi
+
+chownExe()
+{
+    dest="$1"
+    groupName="$(stat -c %G "$dest")"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    if [ "$groupName" != "iosbackup" ]; then
+	echo "chowning $dest for correct group"
+	sudo chown :iosbackup "$dest"
+    fi
+    perms="$(stat -c %a "$dest")"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    if [[ $perms != 75* ]]; then
+	chmod 75${perms: -1} "$dest"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+    fi
+}
 
 if [ "$continuous" == "1" ]; then
 	mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
 
 	# The thing is, here, we need the device's ID to know how to reach it beforehand. So you need to provide a command-line argument for which device to connect to (UUID):
-        deviceToConnectTo="$4" # Leave empty for first-time setup
+        deviceToConnectTo="$5" # Leave empty if $firstTime is 1
 
-	./ibackup.sh "$deviceToConnectTo" "$firstTime"
+	# Prepare perms
+	dest='ibackup.sh'
+	chownExe "$dest"
+	#dest='backupMyIPhone.sh'
+	#chownExe "$dest"
+	dest='.'
+	chownExe "$dest"
+
+	# Run it as a "daemon"
+	if [ "$EUID" -ne 0 ]; then
+	    cmd='sudo su --pty'
+	else
+	    cmd='su'
+	fi
+	$cmd "$username" -c ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun"
 	exit
 fi
 

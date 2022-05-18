@@ -1,16 +1,116 @@
-#!/bin/bash
+#! /usr/bin/env nix-shell
+#! nix-shell -i bash ./shell.nix
 
 # Based on https://valinet.ro/2021/01/20/Automatically-backup-the-iPhone-to-the-Raspberry-Pi.html
 # This is a "daemon" for backing up iOS devices. It polls the device every day at 12:01 AM to try to back it up.
 deviceToConnectTo="$1" # Leave empty for first-time setup
 firstTime="$2"
+dryRun="$3"
 
-if [ "$firstTime" == "1" ]; then
+if [ "$dryRun" == "1" ]; then
+    set -x
+fi
+
+# https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
+is_in_group()
+{
+  groupname="$1"
+  # The second argument is optional -- defaults to current user.
+  current_user="$(id -un)"
+  user="${2:-$current_user}"
+  for group in $(id -Gn "$user") ; do
+    if [ "$group" = "$groupname" ]; then
+      return 0
+    fi
+  done
+  # If it reaches this point, the user is not in the group.
+  return 1
+}
+
+# Begin basic interactive setup #
+# Check group exists
+g=iosbackup
+u="$(id -un)"
+if is_in_group "$g" "$u"; then
+    :
+else
+    echo "Your current user $u needs to be in group $g. (Tip: try \`sudo -E su --preserve-environment SomeUserInGroup_$g\` and then run this script.) Exiting."
+    exit 1
+fi
+
+username="$u"
+dest="/mnt/ironwolf/home/$username"
+mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+if [ ! -e "$dest" ]; then
+    # Make destination folder
+    echo "[ibackup] Creating $dest"
+    sudo mkdir "$dest"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+fi
+# Get group ID and perms of dest
+#gid="$(stat -c %g "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
+#groupName="$(getent group $gid | cut -d: -f1)" # https://stackoverflow.com/questions/29357095/linux-how-to-get-group-id-from-group-name-and-vice-versa
+groupName="$(stat -c %G "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
+if [ "$?" != "0" ]; then
+    exit
+fi
+# Chown dest folder if $groupName isn't what we expect
+if [ "$groupName" != "iosbackup" ]; then
+    echo "chowning $dest for correct group"
+    sudo chown :iosbackup "$dest"
+fi
+perms="$(stat -c %a "$dest")" # https://stackoverflow.com/questions/338037/how-to-check-permissions-of-a-specific-directory
+# Chmod dest folder if perms aren't what we expect, including the separate check (using Python) for whether the setgid bit is not set (based on https://stackoverflow.com/questions/2163800/check-if-a-file-is-setuid-root-in-python , https://docs.python.org/3/library/os.html#os.stat )
+if [ "$?" != "0" ]; then
+    exit
+fi
+if [[ $perms != 77* || $(python3 -c << EOF
+import os
+from sys import argv
+s=os.stat(argv[1])
+if s.st_mode & stat.S_ISGID:
+   print("1")
+else:
+   print("0")
+EOF
+"$dest") == "0" ]]; then
+    echo "chmoding $dest for correct perms"
+    # Set the "setgid" bit using the `2` at the front here, which causes the group to be inherited for all files created within this directory ( https://linuxg.net/how-to-set-the-setuid-and-setgid-bit-for-files-in-linux-and-unix/ , https://unix.stackexchange.com/questions/115631/getting-new-files-to-inherit-group-permissions-on-linux : "It sounds like you're describing the setgid bit functionality where when a directory that has it set, will force any new files created within it to have their group set to the same group that's set on the parent directory." ) :
+    chmod 277${perms: -1} "$dest" # https://stackoverflow.com/questions/17542892/how-to-get-the-last-character-of-a-string-in-a-shell
+fi
+
+snaps="$dest/_btrbk_snap"
+mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+if [ ! -e "$snaps" ]; then
+    sudo mkdir "$(dirname "$snaps")" # We use this instead of `mkdir -p` in case it isn't mounted for some possible case even though we checked `mountpoint` above I guess it could get unmounted in the time between the above `mountpoint` call and this line.
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    sudo mkdir "$snaps"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    perms="$(stat -c %a "$snaps")"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    sudo chown :iosbackup "$snaps"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+    chmod 277${perms: -1} "$snaps"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+fi
+
+# End basic interactive setup #
+
+if [ "$firstTime" == "1" ]; then    
 	# If it's not already running as root, close the beast so we can start up with USB support (which requires root)
-	pgrep -u root usbmuxd || { sudo `which usbmuxd` -X; sleep 3; sudo pkill -9 usbmuxd; #sudo rm /var/run/usbmuxd.pid; # Remove lockfile
-	# Chown lockfile
-	sudo chown :iosbackup /var/run/usbmuxd.pid
-	sudo chmod g+w /var/run/usbmuxd.pid
+	pgrep -u root usbmuxd || { sudo `which usbmuxd` -X;
 	} # `||` runs if previous command fails (non-zero exit code), while `&&` runs if zero exit code ( https://unix.stackexchange.com/questions/22726/how-to-conditionally-do-something-if-a-command-succeeded-or-failed )
 	#pgrep -u root usbmuxd && { sudo `which usbmuxd` -X; sleep 3; sudo pkill -9 -u root usbmuxd; }
 
@@ -38,11 +138,8 @@ if [ "$firstTime" == "1" ]; then
         # Optional (if a password wasn't set)
         #idevicebackup2 -i changepw
 
-	# Close the beast so we can start up next time without USB support (which doesn't require root)
+	# Close the beast so we can start up next time without USB support (which doesn't require root probably)
 	sudo `which usbmuxd` -X
-	sleep 3
-	# Note: `%%` is the most recent job in Bash (jobs are started with `&`)
-	kill -9 %% # Otherwise it doesn't close..
 fi
 
 if [ -z "$deviceToConnectTo" ]; then
@@ -57,7 +154,7 @@ while true; do
 
 
 
-CURDATE=$(date +"%Y%m%d")
+CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
 if [[ -f "$CURDATE" ]]; then
         echo "[ibackup] Backup for today exists."
         current_epoch=$(date +%s)
@@ -94,7 +191,7 @@ output=""
 while : ; do
         ((try=try+1))
         if [ $try -eq 1080 ]; then
-                CURDATE=$(date +"%Y%m%d")
+                CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
                 echo failed > $CURDATE
                 break
         fi
@@ -119,26 +216,29 @@ else
 	userFolderName=$(./uuidToFolderLookupTable.py "$deviceToConnectTo")
 	echo "[ibackup] User: $userFolderName"
 
-	dest="/mnt/ironwolf/home/$username"
-	if [ ! -e "$dest" ]; then
-		# Make destination folder
-		echo "[ibackup] Creating $dest"
-		mkdir "$dest"
+	if [ ! -e "$dest/@iosBackups" ]; then
 		# Make subvolume
 		echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
-		btrfs subvolume create "$dest/@iosBackups"
+		cmd='btrfs subvolume create "$dest/@iosBackups"'
+		if [ "$dryRun" == "1" ]; then
+		    echo $cmd
+		else
+		    $cmd
+		fi
 	else
 		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
 		scriptDir="${BASH_SOURCE[0]}"
 		echo "[ibackup] btrbk Btrfs snapshot starting:"
 		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-		if [ ! -e /mnt/ironwolf/_btrbk_snap ]; then
-			mkdir /mnt/ironwolf/_btrbk_snap
+		if [ "$dryRun" == "1" ]; then
+		    run=dryrun
+		else
+		    run=run
 		fi
 		btrbk --config=<(echo << EOF
 transaction_log            btrbk_ibackup_$username.log
 stream_buffer              512m
-snapshot_dir               _btrbk_snap
+snapshot_dir               home/$username/_btrbk_snap
 incremental                 yes
 snapshot_preserve_min      7d
 snapshot_preserve          14d
@@ -149,18 +249,24 @@ volume /mnt/ironwolf
   snapshot_create  onchange
   subvolume home/$username/@iosBackups
 EOF
-) --verbose --preserve --preserve-backups --preserve-snapshots run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
+) --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
 		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
 		echo "[ibackup] btrbk snapshot finished."
 	fi
 
 	# Back up
-        idevicebackup2 --uuid "$deviceToConnectTo" -n backup "/mnt/ironwolf/home/$username/@iosBackups"
+        cmd='idevicebackup2 --uuid "$deviceToConnectTo" -n backup "/mnt/ironwolf/home/$username/@iosBackups"'
+	if [ "$dryRun" == "1" ]; then
+	    echo $cmd
+	else
+	    $cmd
+	fi
         dv=$?
+	echo "[ibackup] Backup exit code: $dv"
         if [ $dv -eq 0 ]; then
                 # save backup status
                 echo "[ibackup] Backup completed."
-                CURDATE=$(date +"%Y%m%d")
+                CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
                 echo success > $CURDATE
                 echo "[ibackup] Saving backup status for today."
         else
