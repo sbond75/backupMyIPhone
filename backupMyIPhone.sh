@@ -5,9 +5,22 @@
 
 set -e
 
-if [ "$EUID" -ne 0 ]
+continuous="$2" # (Optional) Set to 1 to make the backup wait for WiFi
+firstTime="$3" # (Optional) Set to 1 to re-setup device (only for `continuous` mode for now)
+
+if [ "$continuous" != "1" && "$EUID" -ne 0 ]
   then echo "Please run as root"
   exit
+fi
+
+if [ "$continuous" == "1" ]; then
+	mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+
+	# The thing is, here, we need the device's ID to know how to reach it beforehand. So you need to provide a command-line argument for which device to connect to (UUID):
+        deviceToConnectTo="$4" # Leave empty for first-time setup
+
+	./ibackup.sh "$deviceToConnectTo" "$firstTime"
+	exit
 fi
 
 # Provide an existing directory in $1 to do an incremental backup:
