@@ -8,7 +8,6 @@ set -e
 continuous="$2" # (Optional) Set to 1 to make the backup wait for WiFi
 firstTime="$3" # (Optional) Set to 1 to re-setup device (only for `continuous` mode for now)
 dryRun="$4" # (Optional) [Only works when $continuous == 1] Set to 1 to do a dry run (no changes to backup history + it will be verbose with `set -x`)
-username="$6" # Required when $continuous == 1
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -49,20 +48,23 @@ if [ "$continuous" == "1" ]; then
         deviceToConnectTo="$5" # Leave empty if $firstTime is 1
 
 	# Prepare perms
-	dest='ibackup.sh'
-	chownExe "$dest"
-	#dest='backupMyIPhone.sh'
-	#chownExe "$dest"
-	dest='.'
-	chownExe "$dest"
-
-	# Run it as a "daemon"
 	if [ "$EUID" -ne 0 ]; then
-	    cmd='sudo su --pty'
+	    echo "Not root, not preparing perms"
 	else
-	    cmd='su'
+	    echo "Root, preparing perms and then exiting"
+	    dest='ibackup.sh'
+	    chownExe "$dest"
+	    dest='backupMyIPhone.sh'
+	    chownExe "$dest"
+	    dest='.'
+	    chownExe "$dest"
+	    dest='uuidToFolderLookupTable.py'
+	    chownExe "$dest"
+	    #exit
 	fi
-	$cmd "$username" -c ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun"
+	
+	# Run it as a "daemon"
+	./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun"
 	exit
 fi
 

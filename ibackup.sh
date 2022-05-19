@@ -27,15 +27,33 @@ is_in_group()
   return 1
 }
 
+sudo()
+{
+    if [ "$EUID" -ne 0 ]; then
+	echo "Not root, not running $@"
+    else
+	"$@"
+    fi
+}
+
 # Begin basic interactive setup #
 # Check group exists
 g=iosbackup
 u="$(id -un)"
 if is_in_group "$g" "$u"; then
     :
-else
+elif [ "$EUID" -ne 0 ]; then
     echo "Your current user $u needs to be in group $g. (Tip: try \`sudo -E su --preserve-environment SomeUserInGroup_$g\` and then run this script.) Exiting."
     exit 1
+else
+    # "UDID -> folder name" lookup (config file essentially)
+    userFolderName=$(./udidToFolderLookupTable.py "$deviceToConnectTo")
+    echo "[ibackup] User folder name: $userFolderName"
+    u="$userFolderName"
+    if [ -z "$userFolderName" ]; then
+	echo "Empty name, exiting"
+	exit 1
+    fi
 fi
 
 username="$u"
@@ -84,7 +102,9 @@ fi
 snaps="$dest/_btrbk_snap"
 mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
 if [ ! -e "$snaps" ]; then
-    sudo mkdir "$(dirname "$snaps")" # We use this instead of `mkdir -p` in case it isn't mounted for some possible case even though we checked `mountpoint` above I guess it could get unmounted in the time between the above `mountpoint` call and this line.
+    parent="$(dirname "$snaps")"
+    # "If you want an error when parent directories don't exist, and want to create the directory if it doesn't exist, then you can test [ https://pubs.opengroup.org/onlinepubs/009695399/utilities/test.html ] for the existence of the directory first:" ( https://stackoverflow.com/questions/793858/how-to-mkdir-only-if-a-directory-does-not-already-exist )
+    [ -d "$parent" ] || sudo mkdir "$parent" # We use this instead of `mkdir -p` in case it isn't mounted for some possible case even though we checked `mountpoint` above I guess it could get unmounted in the time between the above `mountpoint` call and this line.
     if [ "$?" != "0" ]; then
 	exit
     fi
@@ -106,6 +126,12 @@ if [ ! -e "$snaps" ]; then
     fi
 fi
 
+if [ "$EUID" -ne 0 ]; then
+    :
+else
+    echo "Running as root and finished setup. Now run this script as a non-root user in the iosbackup group."
+    exit 0
+fi
 # End basic interactive setup #
 
 if [ "$firstTime" == "1" ]; then    
@@ -125,7 +151,7 @@ if [ "$firstTime" == "1" ]; then
         idevice_id -n
 
         if [ -z "$deviceToConnectTo" ]; then
-                echo "Need to provide a UUID from the list above to run the backup on. Exiting."
+                echo "Need to provide a UDID from the list above to run the backup on. Exiting."
                 exit 1
         fi
 
@@ -143,7 +169,7 @@ if [ "$firstTime" == "1" ]; then
 fi
 
 if [ -z "$deviceToConnectTo" ]; then
-        echo "Need to provide a UUID to run the backup on. Exiting."
+        echo "Need to provide a UDID to run the backup on. Exiting."
         exit 1
 fi
 
@@ -195,7 +221,7 @@ while : ; do
                 echo failed > $CURDATE
                 break
         fi
-	output=$(ideviceinfo --uuid "$deviceToConnectTo" -n 2>&1)
+	output=$(ideviceinfo --udid "$deviceToConnectTo" -n 2>&1)
         dv=$?
         if [ $dv -eq 0 ]; then
                 echo "[ibackup] Device is online."
@@ -212,9 +238,13 @@ if [[ -f "$CURDATE" ]]; then
 else
         echo "[ibackup] Backing up..."
 
-	# "UUID -> folder name" lookup (config file essentially)
-	userFolderName=$(./uuidToFolderLookupTable.py "$deviceToConnectTo")
-	echo "[ibackup] User: $userFolderName"
+	# "UDID -> folder name" lookup (config file essentially)
+	userFolderName=$(./udidToFolderLookupTable.py "$deviceToConnectTo")
+	echo "[ibackup] User folder name: $userFolderName"
+	if [ -z "$userFolderName" ]; then
+	    echo "Empty name, exiting"
+	    exit 1
+	fi
 
 	if [ ! -e "$dest/@iosBackups" ]; then
 		# Make subvolume
@@ -255,7 +285,7 @@ EOF
 	fi
 
 	# Back up
-        cmd='idevicebackup2 --uuid "$deviceToConnectTo" -n backup "/mnt/ironwolf/home/$username/@iosBackups"'
+        cmd='idevicebackup2 --udid "$deviceToConnectTo" -n backup "/mnt/ironwolf/home/$username/@iosBackups"'
 	if [ "$dryRun" == "1" ]; then
 	    echo $cmd
 	else
