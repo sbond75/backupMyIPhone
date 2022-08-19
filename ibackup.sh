@@ -198,16 +198,23 @@ fi
 #usbmuxd -v --nousb
 
 userOfRunningUsbmuxd="temp"
+noStart=0
 while [ ! -z "$userOfRunningUsbmuxd" ]; do
 	userOfRunningUsbmuxd=$(ps -o user= -p $(pgrep usbmuxd) 2>/dev/null) # https://stackoverflow.com/questions/44758736/redirect-stderr-to-dev-null
+	if [ "$username" == "$userOfRunningUsbmuxd" ]; then
+	    noStart=1
+	    break
+	fi
 	if [ ! -z "$userOfRunningUsbmuxd" ]; then
 		seconds=60
 		echo "[ibackup] Waiting for usbmuxd of another user ($userOfRunningUsbmuxd) to finish (sleeping for $seconds seconds)..."
 		sleep "$seconds"
 	fi
 done
-echo "[ibackup] Starting network daemon..."
-usbmuxd -v --nousb &
+if [ "$noStart" == "0" ]; then
+    echo "[ibackup] Starting network daemon..."
+    usbmuxd -vv --nousb --debug &
+fi
 
 echo "[ibackup] Waiting for network daemon..."
 sleep 3
