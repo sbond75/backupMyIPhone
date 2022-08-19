@@ -1,11 +1,12 @@
 #! /usr/bin/env nix-shell
-#! nix-shell -i bash ./shell.nix
+#! nix-shell --pure -i bash ./shell.nix
 
 # Based on https://valinet.ro/2021/01/20/Automatically-backup-the-iPhone-to-the-Raspberry-Pi.html
 # This is a "daemon" for backing up iOS devices. It polls the device every day at 12:01 AM to try to back it up.
 deviceToConnectTo="$1" # Leave empty for first-time setup
 firstTime="$2"
 dryRun="$3"
+ranWithTeeAlready="$4" # Internal use, leave empty
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -47,7 +48,7 @@ elif [ "$EUID" -ne 0 ]; then
     exit 1
 else
     # "UDID -> folder name" lookup (config file essentially)
-    userFolderName=$(./udidToFolderLookupTable.py "$deviceToConnectTo")
+    userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
     echo "[ibackup] User folder name: $userFolderName"
     u="$userFolderName"
     if [ -z "$userFolderName" ]; then
@@ -67,6 +68,21 @@ if [ ! -e "$dest" ]; then
 	exit
     fi
 fi
+if [ ! -e "$dest" ]; then
+    # Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
+    echo "[ibackup] Creating $dest/logs"
+    sudo mkdir "$dest/logs"
+    if [ "$?" != "0" ]; then
+	exit
+    fi
+fi
+# Re-run with tee if needed
+if [ -z "$ranWithTeeAlready" ]; then
+    logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
+    echo "[ibackup] Running with tee to logfile $logfile"
+    bash "$0" "$@" "$logfile" | tee "$logfile"
+fi
+
 # Get group ID and perms of dest
 #gid="$(stat -c %g "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
 #groupName="$(getent group $gid | cut -d: -f1)" # https://stackoverflow.com/questions/29357095/linux-how-to-get-group-id-from-group-name-and-vice-versa
@@ -246,7 +262,7 @@ else
         echo "[ibackup] Backing up..."
 
 	# "UDID -> folder name" lookup (config file essentially)
-	userFolderName=$(./udidToFolderLookupTable.py "$deviceToConnectTo")
+	userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
 	echo "[ibackup] User folder name: $userFolderName"
 	if [ -z "$userFolderName" ]; then
 	    echo "Empty name, exiting"
@@ -269,11 +285,16 @@ else
 		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
 		if [ "$dryRun" == "1" ]; then
 		    run=dryrun
+		    #run=run
 		else
 		    run=run
 		fi
-		btrbk --config=<(echo << EOF
-transaction_log            btrbk_ibackup_$username.log
+		filename=$(basename -- "$ranWithTeeAlready")
+		extension="${filename##*.}"
+		filename="${filename%.*}" # Without the extension ( https://stackoverflow.com/questions/965053/extract-filename-and-extension-in-bash )
+		logfileBtrbk="$(dirname "$ranWithTeeAlready")/${filename}_btrbk_ibackup.txt"
+		config=$(cat << EOF
+transaction_log            $logfileBtrbk
 stream_buffer              512m
 snapshot_dir               home/$username/_btrbk_snap
 incremental                 yes
@@ -286,13 +307,15 @@ volume /mnt/ironwolf
   snapshot_create  onchange
   subvolume home/$username/@iosBackups
 EOF
-) --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
+)
+		echo "$config"
+		btrbk --config=<(echo "$config") --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
 		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
 		echo "[ibackup] btrbk snapshot finished."
 	fi
 
 	# Back up
-        cmd='idevicebackup2 --udid "$deviceToConnectTo" -n backup "/mnt/ironwolf/home/$username/@iosBackups"'
+        cmd='idevicebackup2 --udid '"$deviceToConnectTo"' -n backup '"/mnt/ironwolf/home/$username/@iosBackups"''
 	if [ "$dryRun" == "1" ]; then
 	    echo $cmd
 	else

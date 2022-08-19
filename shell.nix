@@ -10,11 +10,13 @@ with pkgs;
 
 mkShell {
   buildInputs = [
-    (callPackage ./libimobiledevice/libimobiledevice.nix {})
+    #(callPackage ./libimobiledevice/libimobiledevice.nix {})
+    (callPackage ./libimobiledevice/libimobiledevice_unstable-2021-11-24.nix {})
     #usbmuxd
     (callPackage ./libimobiledevice/usbmuxd2.nix {})
     pkg-config
 
     python3
+    util-linux
   ];
 }
