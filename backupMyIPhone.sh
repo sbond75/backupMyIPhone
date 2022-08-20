@@ -1,11 +1,11 @@
 #! /usr/bin/env nix-shell
-#! nix-shell -i bash ./libimobiledevice/shell.nix
+#! nix-shell -i bash ./shell.nix
 
 # Nvm: #!/bin/bash
 
 set -e
 
-continuous="$2" # (Optional) Set to 1 to make the backup wait for WiFi
+continuous="$2" # (Optional) Set to 1 to make the backup wait for WiFi. If 1, $inc (aka $1) will be unused.
 firstTime="$3" # (Optional) Set to 1 to re-setup device (only for `continuous` mode for now)
 dryRun="$4" # (Optional) [Only works when $continuous == 1] Set to 1 to do a dry run (no changes to backup history + it will be verbose with `set -x`)
 
@@ -62,9 +62,18 @@ if [ "$continuous" == "1" ]; then
 	    chownExe "$dest"
 	    #exit
 	fi
+
+	username="$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")"
+	echo "Backing up as user $username"
 	
+	# Run btrbk "daemon", as sudo so btrfs snapshots work
+	echo "Starting btrbk daemon..."
+	#port=$((8089 + $(id -u "$username")))
+	port=8089
+	sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" &
+
 	# Run it as a "daemon"
-	./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun"
+	sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
 	exit
 fi
 

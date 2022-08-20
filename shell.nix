@@ -18,5 +18,7 @@ mkShell {
 
     python3
     util-linux
+    lsof
+    (callPackage ./btrbk.nix {})
   ];
 }

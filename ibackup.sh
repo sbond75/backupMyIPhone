@@ -1,12 +1,16 @@
 #! /usr/bin/env nix-shell
 #! nix-shell --pure -i bash ./shell.nix
 
+# echo "$@"
+# exit
+
 # Based on https://valinet.ro/2021/01/20/Automatically-backup-the-iPhone-to-the-Raspberry-Pi.html
 # This is a "daemon" for backing up iOS devices. It polls the device every day at 12:01 AM to try to back it up.
 deviceToConnectTo="$1" # Leave empty for first-time setup
 firstTime="$2"
 dryRun="$3"
-ranWithTeeAlready="$4" # Internal use, leave empty
+btrfsDaemonPort="$4"
+ranWithTeeAlready="$5" # Internal use, leave empty
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -80,7 +84,7 @@ fi
 if [ -z "$ranWithTeeAlready" ]; then
     logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
     echo "[ibackup] Running with tee to logfile $logfile"
-    bash "$0" "$@" "$logfile" | tee "$logfile"
+    bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$logfile" | tee "$logfile"
 fi
 
 # Get group ID and perms of dest
@@ -191,6 +195,11 @@ fi
 
 #echo "[ibackup] Starting network daemon..."
 #usbmuxd -v --nousb &
+
+# Run btrbk "daemon", as sudo so btrfs snapshots work
+#echo "[ibackup] Starting btrbk daemon..."
+# We use `which` for `sudo` below so we don't run the `sudo()` alias defined further up in this file:
+#`which sudo` ./btrbk_daemon.py "$username" "$0" "$dryRun" &
 
 while true; do
 
@@ -309,7 +318,13 @@ volume /mnt/ironwolf
 EOF
 )
 		echo "$config"
-		btrbk --config=<(echo "$config") --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
+		#btrbk --config=<(echo "$config") --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
+		echo "$config" | ./btrbk_run.py "$btrfsDaemonPort"
+		exitCode="$?"
+		if [ "$exitCode" != "0" ]; then
+		    echo "btrbk_run.py failed with exit code $exitCode"
+		    exit
+		fi
 		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
 		echo "[ibackup] btrbk snapshot finished."
 	fi
