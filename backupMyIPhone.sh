@@ -50,30 +50,50 @@ if [ "$continuous" == "1" ]; then
 	# Prepare perms
 	if [ "$EUID" -ne 0 ]; then
 	    echo "Not root, not preparing perms"
+	    if [ "$firstTime" == "1" ]; then
+		echo "Need to be root for firstTime. Exiting."
+		exit 1
+	    fi
 	else
-	    echo "Root, preparing perms and then exiting"
+	    echo "Root, preparing perms and then continuing"
 	    dest='ibackup.sh'
 	    chownExe "$dest"
 	    dest='backupMyIPhone.sh'
 	    chownExe "$dest"
 	    dest='.'
 	    chownExe "$dest"
-	    dest='uuidToFolderLookupTable.py'
+	    dest='udidToFolderLookupTable.py'
 	    chownExe "$dest"
 	    #exit
 	fi
 
-	username="$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")"
-	echo "Backing up as user $username"
-	
-	# Run btrbk "daemon", as sudo so btrfs snapshots work
-	echo "Starting btrbk daemon..."
-	#port=$((8089 + $(id -u "$username")))
-	port=8089
-	sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" &
+	if [ ! -z "$deviceToConnectTo" ]; then
+	    username="$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")"
+	    echo "Backing up as user $username"
 
-	# Run it as a "daemon"
-	sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+	    if [ "$firstTime" == "1" ]; then
+		sudo ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" "$username"
+	    else
+		# Run btrbk "daemon", as sudo so btrfs snapshots work
+		echo "Starting btrbk daemon..."
+		#port=$((8089 + $(id -u "$username")))
+		port=8089
+		sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" &
+
+		# Run it as a "daemon"
+		sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+	    fi
+	else
+	    # First-time run
+	    if [ "$firstTime" != "1" ]; then
+		echo "Need to be firstTime to have no deviceToConnectTo. Exiting."
+		exit 1
+	    fi
+
+	    # First-time setup with sudo
+	    port=""
+	    sudo ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+	fi
 	exit
 fi
 

@@ -1,5 +1,5 @@
 #! /usr/bin/env nix-shell
-#! nix-shell --pure -i bash ./shell.nix
+#! nix-shell -i bash ./shell.nix
 
 # echo "$@"
 # exit
@@ -10,7 +10,8 @@ deviceToConnectTo="$1" # Leave empty for first-time setup
 firstTime="$2"
 dryRun="$3"
 btrfsDaemonPort="$4"
-ranWithTeeAlready="$5" # Internal use, leave empty
+username="$5" # Set this when running as root to do firstTime setup (only use when firstTime = 1)
+ranWithTeeAlready="$6" # Internal use, leave empty
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -52,59 +53,80 @@ elif [ "$EUID" -ne 0 ]; then
     exit 1
 else
     # "UDID -> folder name" lookup (config file essentially)
-    userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
-    echo "[ibackup] User folder name: $userFolderName"
-    u="$userFolderName"
-    if [ -z "$userFolderName" ]; then
-	echo "Empty name, exiting"
+    # userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
+    # echo "[ibackup] User folder name: $userFolderName"
+    # u="$userFolderName"
+    # if [ -z "$userFolderName" ]; then
+    # 	echo "Empty name, exiting"
+    # 	exit 1
+    # fi
+    :
+fi
+
+if [ -z "$username" ]; then
+    username="$u"
+fi
+dest="/mnt/ironwolf/home/$username"
+if [ "$EUID" -eq 0 ]; then
+    if [ "$firstTime" != "1" ]; then
+	echo "Must have firstTime = 1 when running as root. Exiting."
 	exit 1
     fi
-fi
+    echo "Running as root doing basic firstTime setup. Afterwards, run this script as a non-root user in the iosbackup group."
+    
+    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+    if [ ! -e "$dest" ]; then
+	# Make destination folder
+	echo "[ibackup] Creating $dest"
+	sudo mkdir "$dest"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+    fi
+    if [ ! -e "$dest/logs" ]; then
+	# Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
+	echo "[ibackup] Creating $dest/logs"
+	sudo mkdir "$dest/logs"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+    fi
+    if [ ! -e "$dest/@iosBackups" ]; then
+	    # Make subvolume
+	    echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
+	    cmd='sudo btrfs subvolume create '"$dest/@iosBackups"
+	    if [ "$dryRun" == "1" ]; then
+		echo $cmd
+	    else
+		$cmd
+	    fi
+    fi
+    # Re-run with tee if needed
+    if [ -z "$ranWithTeeAlready" ]; then
+	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
+	echo "[ibackup] Running with tee to logfile $logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee "$logfile"
+	exit
+    fi
 
-username="$u"
-dest="/mnt/ironwolf/home/$username"
-mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-if [ ! -e "$dest" ]; then
-    # Make destination folder
-    echo "[ibackup] Creating $dest"
-    sudo mkdir "$dest"
+    # Get group ID and perms of dest
+    #gid="$(stat -c %g "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
+    #groupName="$(getent group $gid | cut -d: -f1)" # https://stackoverflow.com/questions/29357095/linux-how-to-get-group-id-from-group-name-and-vice-versa
+    groupName="$(stat -c %G "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
     if [ "$?" != "0" ]; then
 	exit
     fi
-fi
-if [ ! -e "$dest" ]; then
-    # Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
-    echo "[ibackup] Creating $dest/logs"
-    sudo mkdir "$dest/logs"
+    # Chown dest folder if $groupName isn't what we expect
+    if [ "$groupName" != "iosbackup" ]; then
+	echo "chowning $dest for correct group"
+	sudo chown :iosbackup "$dest"
+    fi
+    perms="$(stat -c %a "$dest")" # https://stackoverflow.com/questions/338037/how-to-check-permissions-of-a-specific-directory
+    # Chmod dest folder if perms aren't what we expect, including the separate check (using Python) for whether the setgid bit is not set (based on https://stackoverflow.com/questions/2163800/check-if-a-file-is-setuid-root-in-python , https://docs.python.org/3/library/os.html#os.stat )
     if [ "$?" != "0" ]; then
 	exit
     fi
-fi
-# Re-run with tee if needed
-if [ -z "$ranWithTeeAlready" ]; then
-    logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
-    echo "[ibackup] Running with tee to logfile $logfile"
-    bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$logfile" | tee "$logfile"
-fi
-
-# Get group ID and perms of dest
-#gid="$(stat -c %g "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
-#groupName="$(getent group $gid | cut -d: -f1)" # https://stackoverflow.com/questions/29357095/linux-how-to-get-group-id-from-group-name-and-vice-versa
-groupName="$(stat -c %G "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
-if [ "$?" != "0" ]; then
-    exit
-fi
-# Chown dest folder if $groupName isn't what we expect
-if [ "$groupName" != "iosbackup" ]; then
-    echo "chowning $dest for correct group"
-    sudo chown :iosbackup "$dest"
-fi
-perms="$(stat -c %a "$dest")" # https://stackoverflow.com/questions/338037/how-to-check-permissions-of-a-specific-directory
-# Chmod dest folder if perms aren't what we expect, including the separate check (using Python) for whether the setgid bit is not set (based on https://stackoverflow.com/questions/2163800/check-if-a-file-is-setuid-root-in-python , https://docs.python.org/3/library/os.html#os.stat )
-if [ "$?" != "0" ]; then
-    exit
-fi
-if [[ $perms != 77* || $(python3 -c << EOF
+    if [[ $perms != 77* || $(python3 -c << EOF
 import os
 from sys import argv
 s=os.stat(argv[1])
@@ -113,45 +135,49 @@ if s.st_mode & stat.S_ISGID:
 else:
    print("0")
 EOF
-"$dest") == "0" ]]; then
-    echo "chmoding $dest for correct perms"
-    # Set the "setgid" bit using the `2` at the front here, which causes the group to be inherited for all files created within this directory ( https://linuxg.net/how-to-set-the-setuid-and-setgid-bit-for-files-in-linux-and-unix/ , https://unix.stackexchange.com/questions/115631/getting-new-files-to-inherit-group-permissions-on-linux : "It sounds like you're describing the setgid bit functionality where when a directory that has it set, will force any new files created within it to have their group set to the same group that's set on the parent directory." ) :
-    chmod 277${perms: -1} "$dest" # https://stackoverflow.com/questions/17542892/how-to-get-the-last-character-of-a-string-in-a-shell
-fi
+    "$dest") == "0" ]]; then
+	echo "chmoding $dest for correct perms"
+	# Set the "setgid" bit using the `2` at the front here, which causes the group to be inherited for all files created within this directory ( https://linuxg.net/how-to-set-the-setuid-and-setgid-bit-for-files-in-linux-and-unix/ , https://unix.stackexchange.com/questions/115631/getting-new-files-to-inherit-group-permissions-on-linux : "It sounds like you're describing the setgid bit functionality where when a directory that has it set, will force any new files created within it to have their group set to the same group that's set on the parent directory." ) :
+	chmod 277${perms: -1} "$dest" # https://stackoverflow.com/questions/17542892/how-to-get-the-last-character-of-a-string-in-a-shell
+    fi
 
-snaps="$dest/_btrbk_snap"
-mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-if [ ! -e "$snaps" ]; then
-    parent="$(dirname "$snaps")"
-    # "If you want an error when parent directories don't exist, and want to create the directory if it doesn't exist, then you can test [ https://pubs.opengroup.org/onlinepubs/009695399/utilities/test.html ] for the existence of the directory first:" ( https://stackoverflow.com/questions/793858/how-to-mkdir-only-if-a-directory-does-not-already-exist )
-    [ -d "$parent" ] || sudo mkdir "$parent" # We use this instead of `mkdir -p` in case it isn't mounted for some possible case even though we checked `mountpoint` above I guess it could get unmounted in the time between the above `mountpoint` call and this line.
-    if [ "$?" != "0" ]; then
-	exit
+    snaps="$dest/_btrbk_snap"
+    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+    if [ ! -e "$snaps" ]; then
+	parent="$(dirname "$snaps")"
+	# "If you want an error when parent directories don't exist, and want to create the directory if it doesn't exist, then you can test [ https://pubs.opengroup.org/onlinepubs/009695399/utilities/test.html ] for the existence of the directory first:" ( https://stackoverflow.com/questions/793858/how-to-mkdir-only-if-a-directory-does-not-already-exist )
+	[ -d "$parent" ] || sudo mkdir "$parent" # We use this instead of `mkdir -p` in case it isn't mounted for some possible case even though we checked `mountpoint` above I guess it could get unmounted in the time between the above `mountpoint` call and this line.
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	sudo mkdir "$snaps"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	perms="$(stat -c %a "$snaps")"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	sudo chown :iosbackup "$snaps"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	chmod 277${perms: -1} "$snaps"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
     fi
-    sudo mkdir "$snaps"
-    if [ "$?" != "0" ]; then
-	exit
-    fi
-    perms="$(stat -c %a "$snaps")"
-    if [ "$?" != "0" ]; then
-	exit
-    fi
-    sudo chown :iosbackup "$snaps"
-    if [ "$?" != "0" ]; then
-	exit
-    fi
-    chmod 277${perms: -1} "$snaps"
-    if [ "$?" != "0" ]; then
-	exit
-    fi
-fi
-
-if [ "$EUID" -ne 0 ]; then
-    :
 else
-    echo "Running as root and finished setup. Now run this script as a non-root user in the iosbackup group."
-    exit 0
+    #exit 0
+    :
 fi
+
+# if [ "$EUID" -ne 0 ]; then
+#     :
+# else
+#     echo "Running as root and finished setup. Now run this script as a non-root user in the iosbackup group."
+#     exit 0
+# fi
 # End basic interactive setup #
 
 if [ "$firstTime" == "1" ]; then    
@@ -160,11 +186,18 @@ if [ "$firstTime" == "1" ]; then
 	} # `||` runs if previous command fails (non-zero exit code), while `&&` runs if zero exit code ( https://unix.stackexchange.com/questions/22726/how-to-conditionally-do-something-if-a-command-succeeded-or-failed )
 	#pgrep -u root usbmuxd && { sudo `which usbmuxd` -X; sleep 3; sudo pkill -9 -u root usbmuxd; }
 
+	# (Note: `nix-shell` requires non-pure (no --pure) shebang at the top..)
+        nix-shell ./shell_wifi_pair.nix --run 'sudo usbmuxd -v & ; sleep 2; idevicepair wifi on' # Use this when on USB (to pair for the first time)
+
+	# Close the above one again (idevicepair is different for wifi on)
+	pgrep -u root usbmuxd || { sudo `which usbmuxd` -X;
+	}
+	
 	# Fire up the beast (usbmuxd also spawns its own stuff) which grabs network devices but is also using sudo so we can acess USB for this firstTime setup.
         sudo `which usbmuxd` -v & # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd2.)
 
-        idevicepair wifi on # Use this when on USB (to pair for the first time)
-
+	sleep 5
+	
         # List network devices (for sanity check)
         echo "List of network devices:"
         # (`-n` for using network devices)
@@ -186,6 +219,9 @@ if [ "$firstTime" == "1" ]; then
 
 	# Close the beast so we can start up next time without USB support (which doesn't require root probably)
 	sudo `which usbmuxd` -X
+
+	echo "Re-run without firstTime to do the backup."
+	exit
 fi
 
 if [ -z "$deviceToConnectTo" ]; then
@@ -279,15 +315,21 @@ else
 	fi
 
 	if [ ! -e "$dest/@iosBackups" ]; then
-		# Make subvolume
-		echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
-		cmd='btrfs subvolume create "$dest/@iosBackups"'
-		if [ "$dryRun" == "1" ]; then
-		    echo $cmd
-		else
-		    $cmd
-		fi
+		# # Make subvolume
+		# echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
+		# cmd='btrfs subvolume create '"$dest/@iosBackups"
+		# if [ "$dryRun" == "1" ]; then
+		#     echo $cmd
+		# else
+		#     $cmd
+	        # fi
+
+	        echo "[ibackup] Fatal error: $dest/@iosBackups doesn't exist. It should have been created in firstTime setup earlier. Exiting."
+	        exit 1
 	else
+	    if [ -z "$(ls -A $dest/@iosBackups)" ]; then # https://superuser.com/questions/352289/bash-scripting-test-for-empty-directory
+		echo "Empty $dest/@iosBackups folder, not snapshotting"
+	    else
 		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
 		scriptDir="${BASH_SOURCE[0]}"
 		echo "[ibackup] btrbk Btrfs snapshot starting:"
@@ -327,6 +369,7 @@ EOF
 		fi
 		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
 		echo "[ibackup] btrbk snapshot finished."
+	    fi
 	fi
 
 	# Back up
