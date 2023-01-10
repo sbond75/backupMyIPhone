@@ -49,6 +49,11 @@ u="$(id -un)"
 if is_in_group "$g" "$u"; then
     :
 elif [ "$EUID" -ne 0 ]; then
+    if [ "$firstTime" == "1" ]; then
+	echo "Must run as root for firstTime = 1. Exiting."
+	exit 1
+    fi
+    
     echo "Your current user $u needs to be in group $g. (Tip: try \`sudo -E su --preserve-environment SomeUserInGroup_$g\` and then run this script.) Exiting."
     exit 1
 else
@@ -100,13 +105,6 @@ if [ "$EUID" -eq 0 ]; then
 	    else
 		$cmd
 	    fi
-    fi
-    # Re-run with tee if needed
-    if [ -z "$ranWithTeeAlready" ]; then
-	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
-	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee "$logfile"
-	exit
     fi
 
     # Get group ID and perms of dest
@@ -169,7 +167,14 @@ EOF
     fi
 else
     #exit 0
-    :
+
+    # Re-run with tee if needed
+    if [ -z "$ranWithTeeAlready" ]; then
+	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
+	echo "[ibackup] Running with tee to logfile $logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee "$logfile"
+	exit
+    fi
 fi
 
 # if [ "$EUID" -ne 0 ]; then
@@ -187,7 +192,7 @@ if [ "$firstTime" == "1" ]; then
 	#pgrep -u root usbmuxd && { sudo `which usbmuxd` -X; sleep 3; sudo pkill -9 -u root usbmuxd; }
 
 	# (Note: `nix-shell` requires non-pure (no --pure) shebang at the top..)
-        nix-shell ./shell_wifi_pair.nix --run 'sudo usbmuxd -v & ; sleep 2; idevicepair wifi on' # Use this when on USB (to pair for the first time)
+        nix-shell ./shell_wifi_pair.nix --run 'sudo usbmuxd -v & { sleep 2; idevicepair wifi on; }' # Use this when on USB (to pair for the first time)
 
 	# Close the above one again (idevicepair is different for wifi on)
 	pgrep -u root usbmuxd || { sudo `which usbmuxd` -X;
@@ -215,7 +220,13 @@ if [ "$firstTime" == "1" ]; then
         idevicebackup2 --udid "$deviceToConnectTo" -n -i encryption on
 
         # Optional (if a password wasn't set)
-        #idevicebackup2 -i changepw
+	read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
+	if [[ ! $REPLY =~ ^[Yy]$ ]]
+	then
+	    idevicebackup2 -i changepw
+	else
+	    :
+	fi
 
 	# Close the beast so we can start up next time without USB support (which doesn't require root probably)
 	sudo `which usbmuxd` -X
