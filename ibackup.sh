@@ -324,7 +324,8 @@ if [ "$noStart" == "0" ]; then
     # (Run original `sudo` command, not wrapped sudo function in bash near the top of this script:)
     # Nohup so it runs as a "daemon":
     sudo_="$(PATH="/run/wrappers/bin/:$PATH" which sudo)"
-    nohup bash -c '"$1" -u iosbackup_usbmuxd usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$2"' bash "$sudo_" "$logfile_usbmuxd"
+    export -f tee_with_timestamps # export the function to make it available in the child process ( https://unix.stackexchange.com/questions/22796/can-i-export-functions-in-bash )
+    (nohup bash -c '"$1" -u iosbackup_usbmuxd usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$2"' bash "$sudo_" "$logfile_usbmuxd" &) & # https://stackoverflow.com/questions/3430330/best-way-to-make-a-shell-script-daemon
     #runuser -u iosbackup_usbmuxd -- usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$logfile_usbmuxd" &
 fi
 
