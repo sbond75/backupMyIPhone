@@ -74,14 +74,32 @@ if [ "$continuous" == "1" ]; then
 	    if [ "$firstTime" == "1" ]; then
 		sudo ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" "$username"
 	    else
-		# Run btrbk "daemon", as sudo so btrfs snapshots work
-		echo "Starting btrbk daemon..."
 		#port=$((8089 + $(id -u "$username")))
 		port=8089
-		sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" &
+		
+		# [nvm, now checking if environment variable is set from the systemd script] Check if sudo is available, i.e. if running as systemd service then we won't have sudo
+		#if [ -z "$(which sudo)" ]; then
+		if [ ! -z "$INVOCATION_ID" ]; then
+		    #echo "No sudo found; assuming this is a systemd service and that btrbk daemon is running already."
+		    echo "Assuming this is a systemd service: INVOCATION_ID is $INVOCATION_ID"
+		    
+		    # Verify user
+		    moi="$(whoami)"
+		    if [ "$username" != "$moi" ]; then
+			echo "Expected script's chosen username \"$username\" to equal whoami user \"${moi}\". Exiting."
+			exit 1
+		    fi
 
-		# Run it as a "daemon"
-		sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+		    # Run it
+		    ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+		else
+		    # Run btrbk "daemon", as sudo so btrfs snapshots work
+		    echo "Starting btrbk daemon..."
+		    sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" & # NOTE: this script may fail if port 8089 is in use. We will assume it is an exiting btrbk daemon that is causing that failure...
+
+		    # Run it as a "daemon"
+		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
+		fi
 	    fi
 	else
 	    # First-time run

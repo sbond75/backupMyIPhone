@@ -17,6 +17,16 @@ if [ "$dryRun" == "1" ]; then
     set -x
 fi
 
+# https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
+# Usage: `echo "test" | tee_with_timestamps "file.txt"`
+function tee_with_timestamps () {
+    local logfile=$1
+    while read data; do
+	echo "${data}" | sed -e "s/^/$(date '+%T') /" >> "${logfile}"
+	echo "${data}"
+    done
+}
+
 # https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
 is_in_group()
 {
@@ -71,42 +81,10 @@ fi
 if [ -z "$username" ]; then
     username="$u"
 fi
-dest="/mnt/ironwolf/home/$username"
-if [ "$EUID" -eq 0 ]; then
-    if [ "$firstTime" != "1" ]; then
-	echo "Must have firstTime = 1 when running as root. Exiting."
-	exit 1
-    fi
-    echo "Running as root doing basic firstTime setup. Afterwards, run this script as a non-root user in the iosbackup group."
+chownchmod()
+{
+    local dest="$1"
     
-    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-    if [ ! -e "$dest" ]; then
-	# Make destination folder
-	echo "[ibackup] Creating $dest"
-	sudo mkdir "$dest"
-	if [ "$?" != "0" ]; then
-	    exit
-	fi
-    fi
-    if [ ! -e "$dest/logs" ]; then
-	# Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
-	echo "[ibackup] Creating $dest/logs"
-	sudo mkdir "$dest/logs"
-	if [ "$?" != "0" ]; then
-	    exit
-	fi
-    fi
-    if [ ! -e "$dest/@iosBackups" ]; then
-	    # Make subvolume
-	    echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
-	    cmd='sudo btrfs subvolume create '"$dest/@iosBackups"
-	    if [ "$dryRun" == "1" ]; then
-		echo $cmd
-	    else
-		$cmd
-	    fi
-    fi
-
     # Get group ID and perms of dest
     #gid="$(stat -c %g "$dest")" # https://superuser.com/questions/581989/bash-find-directory-group-owner
     #groupName="$(getent group $gid | cut -d: -f1)" # https://stackoverflow.com/questions/29357095/linux-how-to-get-group-id-from-group-name-and-vice-versa
@@ -137,6 +115,61 @@ EOF
 	echo "chmoding $dest for correct perms"
 	# Set the "setgid" bit using the `2` at the front here, which causes the group to be inherited for all files created within this directory ( https://linuxg.net/how-to-set-the-setuid-and-setgid-bit-for-files-in-linux-and-unix/ , https://unix.stackexchange.com/questions/115631/getting-new-files-to-inherit-group-permissions-on-linux : "It sounds like you're describing the setgid bit functionality where when a directory that has it set, will force any new files created within it to have their group set to the same group that's set on the parent directory." ) :
 	chmod 277${perms: -1} "$dest" # https://stackoverflow.com/questions/17542892/how-to-get-the-last-character-of-a-string-in-a-shell
+    fi
+}
+dest="/mnt/ironwolf/home/$username"
+dest_usbmuxd="/mnt/ironwolf/home/iosbackup_usbmuxd"
+makeDest()
+{
+    local dest="$1"
+    if [ ! -e "$dest" ]; then
+	# Make destination folder
+	echo "[ibackup] Creating $dest"
+	sudo mkdir "$dest"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+    fi
+    if [ ! -e "$dest/logs" ]; then
+	# Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
+	echo "[ibackup] Creating $dest/logs"
+	sudo mkdir "$dest/logs"
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	
+	# Make it use compression
+	echo "[ibackup] Making $dest/logs use Btrfs compression"
+	btrfs property set "$dest/logs" compression zlib:9
+	if [ "$?" != "0" ]; then
+	    exit
+	fi
+	echo "[ibackup] Btrfs properties of $dest/logs is now:"
+	btrfs property get "$dest/logs"
+    fi
+
+    chownchmod "$dest"
+    chownchmod "$dest/logs"
+}
+if [ "$EUID" -eq 0 ]; then
+    if [ "$firstTime" != "1" ]; then
+	echo "Must have firstTime = 1 when running as root. Exiting."
+	exit 1
+    fi
+    echo "Running as root doing basic firstTime setup. Afterwards, run this script as a non-root user in the iosbackup group."
+    
+    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+    makeDest "$dest"
+    makeDest "$dest_usbmuxd"
+    if [ ! -e "$dest/@iosBackups" ]; then
+	    # Make subvolume
+	    echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
+	    cmd='sudo btrfs subvolume create '"$dest/@iosBackups"
+	    if [ "$dryRun" == "1" ]; then
+		echo $cmd
+	    else
+		$cmd
+	    fi
     fi
 
     snaps="$dest/_btrbk_snap"
@@ -172,7 +205,7 @@ else
     if [ -z "$ranWithTeeAlready" ]; then
 	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee "$logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee_with_timestamps "$logfile"
 	exit
     fi
 fi
@@ -252,7 +285,7 @@ while true; do
 
 
 
-CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
+CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
 if [[ -f "$CURDATE" ]]; then
         echo "[ibackup] Backup for today exists."
         current_epoch=$(date +%s)
@@ -260,7 +293,7 @@ if [[ -f "$CURDATE" ]]; then
         to_sleep=$(( $target_epoch - $current_epoch ))
         echo "[ibackup] Sleeping for $to_sleep seconds (current epoch: $current_epoch)..."
         sleep $to_sleep
-        rm $CURDATE
+        rm "$CURDATE"
 fi
 
 # backup
@@ -273,19 +306,26 @@ userOfRunningUsbmuxd="temp"
 noStart=0
 while [ ! -z "$userOfRunningUsbmuxd" ]; do
 	userOfRunningUsbmuxd=$(ps -o user= -p $(pgrep usbmuxd) 2>/dev/null) # https://stackoverflow.com/questions/44758736/redirect-stderr-to-dev-null
-	if [ "$username" == "$userOfRunningUsbmuxd" ]; then
-	    noStart=1
-	    break
-	fi
 	if [ ! -z "$userOfRunningUsbmuxd" ]; then
-		seconds=60
-		echo "[ibackup] Waiting for usbmuxd of another user ($userOfRunningUsbmuxd) to finish (sleeping for $seconds seconds)..."
-		sleep "$seconds"
+	    if [ "iosbackup_usbmuxd" == "$userOfRunningUsbmuxd" ]; then #if [ "$username" == "$userOfRunningUsbmuxd" ]; then
+		noStart=1
+		break
+	    fi
+	
+	    seconds=60
+	    echo "[ibackup] Waiting for usbmuxd of another user ($userOfRunningUsbmuxd) to finish (sleeping for $seconds seconds)..."
+	    sleep "$seconds"
 	fi
 done
 if [ "$noStart" == "0" ]; then
-    echo "[ibackup] Starting network daemon..."
-    usbmuxd -vv --nousb --debug &
+    logfile_usbmuxd="$dest_usbmuxd/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
+    echo "[ibackup] Starting network daemon with logfile ${logfile_usbmuxd}..."
+    
+    # (Run original `sudo` command, not wrapped sudo function in bash near the top of this script:)
+    # Nohup so it runs as a "daemon":
+    sudo_="$(PATH="/run/wrappers/bin/:$PATH" which sudo)"
+    nohup bash -c '"$1" -u iosbackup_usbmuxd usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$2"' bash "$sudo_" "$logfile_usbmuxd"
+    #runuser -u iosbackup_usbmuxd -- usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$logfile_usbmuxd" &
 fi
 
 echo "[ibackup] Waiting for network daemon..."
@@ -296,7 +336,7 @@ output=""
 while : ; do
         ((try=try+1))
         if [ $try -eq 1080 ]; then
-                CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
+                CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
                 echo failed > $CURDATE
                 break
         fi
@@ -310,7 +350,7 @@ while : ; do
                 break
         fi
         echo "[ibackup] Device is offline, sleeping a bit until retrying [$try]..."
-        sleep 10
+        sleep $((10 * try)) # "Linear" backoff (instead of exponential backoff or something like that, to retry again but wait longer each time)
 done
 if [[ -f "$CURDATE" ]]; then
         echo "[ibackup] Timed out waiting for device, maybe we'll backup tomorrow."
@@ -395,7 +435,7 @@ EOF
         if [ $dv -eq 0 ]; then
                 # save backup status
                 echo "[ibackup] Backup completed."
-                CURDATE=/var/run/usbmuxd.d/$(date +"%Y%m%d")
+                CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
                 echo success > $CURDATE
                 echo "[ibackup] Saving backup status for today."
         else

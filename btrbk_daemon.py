@@ -34,7 +34,14 @@ if uid != 0:
 
 from datetime import datetime
 
-LOGS_PATH = '/mnt/ironwolf/home/sebastian_iosbackup/logs/'
+# https://stackoverflow.com/questions/58162544/adding-timestamp-to-print-function
+old_print = print
+def timestamped_print(*args, **kwargs):
+    old_print(datetime.now(), *args, **kwargs)
+print = timestamped_print
+
+# Make logfile name
+LOGS_PATH = '/mnt/ironwolf/home/iosbackup_usbmuxd/logs/'
 now = datetime.now()
 LOG_NAME = LOGS_PATH + now.strftime("%Y-%m-%d_%H_%M_%S") + '.log_btrbk_daemon.txt'
 
@@ -88,7 +95,8 @@ dryRun = True if sys.argv[3] == '1' else False
 port = int(sys.argv[4])
 
 # https://docs.python.org/3/howto/sockets.html
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
+#with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as serversocket:
     # bind the socket to a public host, and a well-known port
     serversocket.bind(('localhost', port))
     # become a server socket
