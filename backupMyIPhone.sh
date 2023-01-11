@@ -90,6 +90,7 @@ if [ "$continuous" == "1" ]; then
 			exit 1
 		    fi
 
+		    trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT # Install signal handlers that, when systemd kills this process, then it will kill children ("the whole process group") too ( https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits )
 		    # Run it
 		    ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port"
 		else

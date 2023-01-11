@@ -317,7 +317,7 @@ while [ ! -z "$userOfRunningUsbmuxd" ]; do
 	    sleep "$seconds"
 	fi
 done
-if [ "$noStart" == "0" ]; then
+if [ "$noStart" == "0" ]; then # NOTE: this may start up anyway despite there not being any other users... and that is ok, it will just have permission denied since one user owns the logfile at a time (the one who spawned it, currently)..
     logfile_usbmuxd="$dest_usbmuxd/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
     echo "[ibackup] Starting network daemon with logfile ${logfile_usbmuxd}..."
     
@@ -357,6 +357,7 @@ if [[ -f "$CURDATE" ]]; then
         echo "[ibackup] Timed out waiting for device, maybe we'll backup tomorrow."
 else
         echo "[ibackup] Backing up..."
+        try=0
 
 	# "UDID -> folder name" lookup (config file essentially)
 	userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
@@ -440,8 +441,9 @@ EOF
                 echo success > $CURDATE
                 echo "[ibackup] Saving backup status for today."
         else
-                echo "[ibackup] Backup failed, sleeping a bit until retrying..."
-                sleep 10
+            ((try=try+1))
+            echo "[ibackup] Backup failed, sleeping a bit until retrying [$try]..."
+            sleep $((10 * try))
         fi
 fi
 #echo "[ibackup] Killing network daemon..."
