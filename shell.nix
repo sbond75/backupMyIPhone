@@ -22,6 +22,6 @@ mkShell {
     (callPackage ./btrbk.nix {})
     procps
     which
-    sudo
+    #sudo
   ];
 }

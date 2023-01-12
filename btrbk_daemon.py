@@ -3,6 +3,7 @@
 
 import os
 import sys
+import re
 
 # Check if root
 uid = os.getuid()
@@ -41,9 +42,10 @@ def timestamped_print(*args, **kwargs):
 print = timestamped_print
 
 # Make logfile name
-LOGS_PATH = '/mnt/ironwolf/home/iosbackup_usbmuxd/logs/'
+MY_LOGS_PATH = '/mnt/ironwolf/home/iosbackup_usbmuxd/logs/'
+r_LOGS_PATH = re.compile(r'/mnt/ironwolf/home/.*iosbackup.*/logs/')
 now = datetime.now()
-LOG_NAME = LOGS_PATH + now.strftime("%Y-%m-%d_%H_%M_%S") + '.log_btrbk_daemon.txt'
+LOG_NAME = MY_LOGS_PATH + now.strftime("%Y-%m-%d_%H_%M_%S") + '.log_btrbk_daemon.txt'
 
 # # https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file #
 # # open our log file
@@ -95,10 +97,16 @@ dryRun = True if sys.argv[3] == '1' else False
 port = int(sys.argv[4])
 
 # https://docs.python.org/3/howto/sockets.html
-#with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
-with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as serversocket:
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
+#with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as serversocket:
     # bind the socket to a public host, and a well-known port
-    serversocket.bind(('localhost', port))
+    serversocket.bind(('localhost', port)) # localhost is used so it is not accessible from outside this machine ( https://stackoverflow.com/questions/5710443/python-socket-only-accepting-local-connections + "A couple things to notice: we used socket.gethostname() so that the socket would be visible to the outside world. If we had used s.bind(('localhost', 80)) or s.bind(('127.0.0.1', 80)) we would still have a “server” socket, but one that was only visible within the same machine. s.bind(('', 80)) specifies that the socket is reachable by any address the machine happens to have." in {`# create an INET, STREAMing socket
+    # serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # # bind the socket to a public host, and a well-known port
+    # serversocket.bind((socket.gethostname(), 80))
+    # # become a server socket
+    # serversocket.listen(5)`} from https://docs.python.org/3/howto/sockets.html )
+    
     # become a server socket
     serversocket.listen(5)#1)   #serversocket.listen(5) # "Finally, the argument to listen tells the socket library that we want it to queue up as many as 5 connect requests (the normal max) before refusing outside connections. If the rest of the code is written properly, that should be plenty."
     
@@ -195,7 +203,7 @@ with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as serversocket:
                 # Not found
                 raise Exception("Field not found in line " + str(index+1) + ": " + str(toFind))
             logfile,i = grabField('transaction_log')
-            if not logfile.startswith(LOGS_PATH):
+            if not r_LOGS_PATH.match(logfile): # NOTE: "re.match is anchored at the beginning of the string. That has nothing to do with newlines, so it is not the same as using ^ in the pattern." ( https://stackoverflow.com/questions/180986/what-is-the-difference-between-re-search-and-re-match )
                 print("invalid command: transaction_log:", logfile)
                 continue
             snapshotDir,i = grabField('snapshot_dir', i)

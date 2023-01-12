@@ -12,10 +12,77 @@ dryRun="$3"
 btrfsDaemonPort="$4"
 username="$5" # Set this when running as root to do firstTime setup (only use when firstTime = 1)
 ranWithTeeAlready="$6" # Internal use, leave empty
+snapshotBeforeBackup="$7" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
 
 if [ "$dryRun" == "1" ]; then
     set -x
 fi
+
+echo "[ibackup] Starting up with args $@"
+
+makeSnapshot()
+{
+    local dest="$1"
+    
+	# Make snapshot
+	if [ ! -e "$dest/@iosBackups" ]; then
+		# # Make subvolume
+		# echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
+		# cmd='btrfs subvolume create '"$dest/@iosBackups"
+		# if [ "$dryRun" == "1" ]; then
+		#     echo $cmd
+		# else
+		#     $cmd
+		# fi
+
+		echo "[ibackup] Fatal error: $dest/@iosBackups doesn't exist. It should have been created in firstTime setup earlier. Exiting."
+		exit 1
+	else
+	    if [ -z "$(ls -A $dest/@iosBackups)" ]; then # https://superuser.com/questions/352289/bash-scripting-test-for-empty-directory
+		echo "Empty $dest/@iosBackups folder, not snapshotting"
+	    else
+		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
+		scriptDir="${BASH_SOURCE[0]}"
+		echo "[ibackup] btrbk Btrfs snapshot starting:"
+		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+		if [ "$dryRun" == "1" ]; then
+		    run=dryrun
+		    #run=run
+		else
+		    run=run
+		fi
+		filename=$(basename -- "$ranWithTeeAlready")
+		extension="${filename##*.}"
+		filename="${filename%.*}" # Without the extension ( https://stackoverflow.com/questions/965053/extract-filename-and-extension-in-bash )
+		logfileBtrbk="$(dirname "$ranWithTeeAlready")/${filename}_btrbk_ibackup.txt"
+		config=$(cat << EOF
+transaction_log            $logfileBtrbk
+stream_buffer              512m
+snapshot_dir               home/$username/_btrbk_snap
+incremental                 yes
+snapshot_preserve_min      7d
+snapshot_preserve          14d
+target_preserve_min        all
+target_preserve            no
+snapshot_preserve       14d
+volume /mnt/ironwolf
+  snapshot_create  onchange
+  subvolume home/$username/@iosBackups
+EOF
+)
+		echo "$config"
+		#btrbk --config=<(echo "$config") --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
+		echo "$config" | python3 ./btrbk_run.py "$btrfsDaemonPort" # NOTE: doesn't use the nix shell shebang due to a minor issue with `sudo -E su --preserve-environment` followed by a username to run as, which is: `error: creating directory '/run/user/1000/nix-shell-600411-0': Permission denied`. Just using the python3 we have already fixes this issue.
+		exitCode="$?"
+		if [ "$exitCode" != "0" ]; then
+		    echo "btrbk_run.py failed with exit code $exitCode"
+		    exit
+		fi
+		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
+		echo "[ibackup] btrbk snapshot finished."
+	    fi
+	fi
+}
 
 # https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
 # Usage: `echo "test" | tee_with_timestamps "file.txt"`
@@ -211,7 +278,7 @@ else
     if [ -z "$ranWithTeeAlready" ]; then
 	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" 2>&1 | tee_with_timestamps "$logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" 2>&1 | tee_with_timestamps "$logfile"
 	exit
     fi
 fi
@@ -287,6 +354,15 @@ fi
 # We use `which` for `sudo` below so we don't run the `sudo()` alias defined further up in this file:
 #`which sudo` ./btrbk_daemon.py "$username" "$0" "$dryRun" &
 
+if [ "$snapshotBeforeBackup" = "1" ]; then
+    echo '[ibackup] Just making snapshot, then exiting'
+    # Make a snapshot
+    makeSnapshot "$dest"
+
+    echo '[ibackup] Snapshot made. Exiting.'
+    exit
+fi
+
 while true; do
 try=0
     
@@ -295,8 +371,11 @@ try=0
 #successOrFailLogsBaseFolder="/var/run/usbmuxd.d"
 successOrFailLogsBaseFolder="/mnt/ironwolf/home/iosbackup_usbmuxd/logs"
 CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
-#if [[ -f "$CURDATE" ]]; then
-contents="$(tail -n 1 "$CURDATE")"
+if [[ -f "$CURDATE" ]]; then
+    contents="$(tail -n 1 "$CURDATE")"
+else
+    contents=
+fi
 if [ "$contents" = "failed_with_too_many_attempts" ] || [ "$contents" = "success" ]; then
         echo "[ibackup] Backup for today exists."
         current_epoch=$(date +%s)
@@ -364,8 +443,11 @@ while : ; do
         echo "[ibackup] Device is offline, sleeping a bit until retrying [$try]..."
         sleep $((10 * try)) # "Linear" backoff (instead of exponential backoff or something like that, to retry again but wait longer each time)
 done
-#if [[ -f "$CURDATE" ]]; then
-contents="$(tail -n 1 "$CURDATE")"
+if [[ -f "$CURDATE" ]]; then
+    contents="$(tail -n 1 "$CURDATE")"
+else
+    contents=
+fi
 if [ "$contents" = "success" ] || [ "$contents" = "failed" ]; then
     echo "[ibackup] Weird thing that shouldn't really happen: $CURDATE file says $contents at the end despite not having run the backup yet. (Backup will continue tomorrow, etc., as if it timed out waiting for the device too many times.) Contents of the entire file are: $(cat "$CURDATE")"
 elif [ "$contents" = "failed_with_too_many_attempts" ]; then
@@ -382,64 +464,15 @@ else
 	    exit 1
 	fi
 
-	if [ ! -e "$dest/@iosBackups" ]; then
-		# # Make subvolume
-		# echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
-		# cmd='btrfs subvolume create '"$dest/@iosBackups"
-		# if [ "$dryRun" == "1" ]; then
-		#     echo $cmd
-		# else
-		#     $cmd
-	        # fi
+	# if [ "$snapshotBeforeBackup" = "1" ]; then
+	#     echo '[ibackup] Just making snapshot, then exiting'
+	#     # Make a snapshot
+	#     makeSnapshot "$dest"
 
-	        echo "[ibackup] Fatal error: $dest/@iosBackups doesn't exist. It should have been created in firstTime setup earlier. Exiting."
-	        exit 1
-	else
-	    if [ -z "$(ls -A $dest/@iosBackups)" ]; then # https://superuser.com/questions/352289/bash-scripting-test-for-empty-directory
-		echo "Empty $dest/@iosBackups folder, not snapshotting"
-	    else
-		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
-		scriptDir="${BASH_SOURCE[0]}"
-		echo "[ibackup] btrbk Btrfs snapshot starting:"
-		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-		if [ "$dryRun" == "1" ]; then
-		    run=dryrun
-		    #run=run
-		else
-		    run=run
-		fi
-		filename=$(basename -- "$ranWithTeeAlready")
-		extension="${filename##*.}"
-		filename="${filename%.*}" # Without the extension ( https://stackoverflow.com/questions/965053/extract-filename-and-extension-in-bash )
-		logfileBtrbk="$(dirname "$ranWithTeeAlready")/${filename}_btrbk_ibackup.txt"
-		config=$(cat << EOF
-transaction_log            $logfileBtrbk
-stream_buffer              512m
-snapshot_dir               home/$username/_btrbk_snap
-incremental                 yes
-snapshot_preserve_min      7d
-snapshot_preserve          14d
-target_preserve_min        all
-target_preserve            no
-snapshot_preserve       14d
-volume /mnt/ironwolf
-  snapshot_create  onchange
-  subvolume home/$username/@iosBackups
-EOF
-)
-		echo "$config"
-		#btrbk --config=<(echo "$config") --verbose --preserve --preserve-backups --preserve-snapshots $run #run #dryrun             #"--preserve": "preserve all (do not delete anything)"                 # --loglevel=debug
-		echo "$config" | ./btrbk_run.py "$btrfsDaemonPort"
-		exitCode="$?"
-		if [ "$exitCode" != "0" ]; then
-		    echo "btrbk_run.py failed with exit code $exitCode"
-		    exit
-		fi
-		#misc cool stuff: `sudo btrbk --config="$configLocation" diff` could be nice to find where a file was changed!
-		echo "[ibackup] btrbk snapshot finished."
-	    fi
-	fi
-
+	#     echo '[ibackup] Snapshot made. Exiting.'
+	#     exit
+	# fi
+	
 	# Back up
         cmd='idevicebackup2 --udid '"$deviceToConnectTo"' -n backup '"/mnt/ironwolf/home/$username/@iosBackups"''
 	if [ "$dryRun" == "1" ]; then
@@ -450,8 +483,12 @@ EOF
         dv=$?
 	echo "[ibackup] Backup exit code: $dv"
         if [ $dv -eq 0 ]; then
-                # save backup status
                 echo "[ibackup] Backup completed."
+	    
+                # Make a snapshot
+		makeSnapshot "$dest"
+
+		# Save backup status
                 CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
                 echo success >> "$CURDATE"
                 echo "[ibackup] Saving backup status for today."
