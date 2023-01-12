@@ -122,6 +122,7 @@ dest_usbmuxd="/mnt/ironwolf/home/iosbackup_usbmuxd"
 makeDest()
 {
     local dest="$1"
+    local makeLogsFolder="$2"
     if [ ! -e "$dest" ]; then
 	# Make destination folder
 	echo "[ibackup] Creating $dest"
@@ -130,26 +131,30 @@ makeDest()
 	    exit
 	fi
     fi
-    if [ ! -e "$dest/logs" ]; then
-	# Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
-	echo "[ibackup] Creating $dest/logs"
-	sudo mkdir "$dest/logs"
-	if [ "$?" != "0" ]; then
-	    exit
+    if [ "$makeLogsFolder" = "1" ]; then
+	if [ ! -e "$dest/logs" ]; then
+	    # Create logs folder (for running with `| tee "$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"`)
+	    echo "[ibackup] Creating $dest/logs"
+	    sudo mkdir "$dest/logs"
+	    if [ "$?" != "0" ]; then
+		exit
+	    fi
+
+	    # Make it use compression
+	    echo "[ibackup] Making $dest/logs use Btrfs compression"
+	    btrfs property set "$dest/logs" compression zlib:9
+	    if [ "$?" != "0" ]; then
+		exit
+	    fi
+	    echo "[ibackup] Btrfs properties of $dest/logs is now:"
+	    btrfs property get "$dest/logs"
 	fi
-	
-	# Make it use compression
-	echo "[ibackup] Making $dest/logs use Btrfs compression"
-	btrfs property set "$dest/logs" compression zlib:9
-	if [ "$?" != "0" ]; then
-	    exit
-	fi
-	echo "[ibackup] Btrfs properties of $dest/logs is now:"
-	btrfs property get "$dest/logs"
     fi
 
     chownchmod "$dest"
-    chownchmod "$dest/logs"
+    if [ "$makeLogsFolder" = "1" ]; then
+	chownchmod "$dest/logs"
+    fi
 }
 if [ "$EUID" -eq 0 ]; then
     if [ "$firstTime" != "1" ]; then
@@ -159,8 +164,8 @@ if [ "$EUID" -eq 0 ]; then
     echo "Running as root doing basic firstTime setup. Afterwards, run this script as a non-root user in the iosbackup group."
     
     mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
-    makeDest "$dest"
-    makeDest "$dest_usbmuxd"
+    makeDest "$dest" 1
+    makeDest "$dest_usbmuxd" 1
     if [ ! -e "$dest/@iosBackups" ]; then
 	    # Make subvolume
 	    echo "[ibackup] Creating Btrfs subvolume at $dest/@iosBackups"
@@ -171,6 +176,7 @@ if [ "$EUID" -eq 0 ]; then
 		$cmd
 	    fi
     fi
+    makeDest "$dest/@iosBackups" 0
 
     snaps="$dest/_btrbk_snap"
     mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
