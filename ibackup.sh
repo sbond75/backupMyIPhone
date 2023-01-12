@@ -288,11 +288,16 @@ fi
 #`which sudo` ./btrbk_daemon.py "$username" "$0" "$dryRun" &
 
 while true; do
+try=0
+    
 
 
-
-CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
-if [[ -f "$CURDATE" ]]; then
+#successOrFailLogsBaseFolder="/var/run/usbmuxd.d"
+successOrFailLogsBaseFolder="/mnt/ironwolf/home/iosbackup_usbmuxd/logs"
+CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+#if [[ -f "$CURDATE" ]]; then
+contents="$(tail -n 1 "$CURDATE")"
+if [ "$contents" = "failed_with_too_many_attempts" ] || [ "$contents" = "success" ]; then
         echo "[ibackup] Backup for today exists."
         current_epoch=$(date +%s)
         target_epoch=$(date -d "tomorrow 00:00:01" +%s)
@@ -338,13 +343,13 @@ fi
 echo "[ibackup] Waiting for network daemon..."
 sleep 3
 echo "[ibackup] Starting backup..."
-try=0
+#try=0
 output=""
 while : ; do
         ((try=try+1))
         if [ $try -eq 1080 ]; then
-                CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
-                echo failed > $CURDATE
+                CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+                echo failed_with_too_many_attempts >> "$CURDATE"
                 break
         fi
 	output=$(ideviceinfo --udid "$deviceToConnectTo" -n 2>&1)
@@ -359,7 +364,11 @@ while : ; do
         echo "[ibackup] Device is offline, sleeping a bit until retrying [$try]..."
         sleep $((10 * try)) # "Linear" backoff (instead of exponential backoff or something like that, to retry again but wait longer each time)
 done
-if [[ -f "$CURDATE" ]]; then
+#if [[ -f "$CURDATE" ]]; then
+contents="$(tail -n 1 "$CURDATE")"
+if [ "$contents" = "success" ] || [ "$contents" = "failed" ]; then
+    echo "[ibackup] Weird thing that shouldn't really happen: $CURDATE file says $contents at the end despite not having run the backup yet. (Backup will continue tomorrow, etc., as if it timed out waiting for the device too many times.) Contents of the entire file are: $(cat "$CURDATE")"
+elif [ "$contents" = "failed_with_too_many_attempts" ]; then
         echo "[ibackup] Timed out waiting for device, maybe we'll backup tomorrow."
 else
         echo "[ibackup] Backing up..."
@@ -443,11 +452,14 @@ EOF
         if [ $dv -eq 0 ]; then
                 # save backup status
                 echo "[ibackup] Backup completed."
-                CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
-                echo success > $CURDATE
+                CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+                echo success >> "$CURDATE"
                 echo "[ibackup] Saving backup status for today."
 		try=0 # reset tries
         else
+            CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+            echo failed >> "$CURDATE"
+	    
             ((try=try+1))
             echo "[ibackup] Backup failed, sleeping a bit until retrying [$try]..."
             sleep $((10 * try))
