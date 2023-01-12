@@ -357,7 +357,7 @@ if [[ -f "$CURDATE" ]]; then
         echo "[ibackup] Timed out waiting for device, maybe we'll backup tomorrow."
 else
         echo "[ibackup] Backing up..."
-        try=0
+        #try=0
 
 	# "UDID -> folder name" lookup (config file essentially)
 	userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
@@ -440,6 +440,7 @@ EOF
                 CURDATE="/var/run/usbmuxd.d/$(date +"%Y%m%d")_$username"
                 echo success > $CURDATE
                 echo "[ibackup] Saving backup status for today."
+		try=0 # reset tries
         else
             ((try=try+1))
             echo "[ibackup] Backup failed, sleeping a bit until retrying [$try]..."
