@@ -383,8 +383,9 @@ if [ "$contents" = "failed_with_too_many_attempts" ] || [ "$contents" = "success
         to_sleep=$(( $target_epoch - $current_epoch ))
         echo "[ibackup] Sleeping for $to_sleep seconds (current epoch: $current_epoch)..."
         sleep $to_sleep
-        rm "$CURDATE"
+        #rm "$CURDATE"
 fi
+CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
 
 # backup
 #echo "[ibackup] Killing network daemon..."
@@ -426,9 +427,12 @@ echo "[ibackup] Starting backup..."
 output=""
 while : ; do
         ((try=try+1))
-        if [ $try -eq 1080 ]; then
-                CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
-                echo failed_with_too_many_attempts >> "$CURDATE"
+        #if [ $try -eq 1080 ]; then
+	if [ $try -ge 100 ]; then
+                #CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+	        if [ "$dryRun" != "1" ]; then
+                    echo failed_with_too_many_attempts | tee_with_timestamps "$CURDATE"
+		fi
                 break
         fi
 	output=$(ideviceinfo --udid "$deviceToConnectTo" -n 2>&1)
@@ -478,6 +482,7 @@ else
 	if [ "$dryRun" == "1" ]; then
 	    echo $cmd
 	else
+	    echo about_to_start_backup | tee_with_timestamps "$CURDATE"
 	    $cmd
 	fi
         dv=$?
@@ -489,13 +494,17 @@ else
 		makeSnapshot "$dest"
 
 		# Save backup status
-                CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
-                echo success >> "$CURDATE"
+                #CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+	        if [ "$dryRun" != "1" ]; then
+                    echo success | tee_with_timestamps "$CURDATE"
+		fi
                 echo "[ibackup] Saving backup status for today."
 		try=0 # reset tries
         else
-            CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
-            echo failed >> "$CURDATE"
+            #CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
+	    if [ "$dryRun" != "1" ]; then
+                echo failed | tee_with_timestamps "$CURDATE"
+	    fi
 	    
             ((try=try+1))
             echo "[ibackup] Backup failed, sleeping a bit until retrying [$try]..."

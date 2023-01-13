@@ -23,5 +23,6 @@ mkShell {
     procps
     which
     #sudo
+    netcat-gnu
   ];
 }

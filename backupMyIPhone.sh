@@ -18,6 +18,18 @@ if [ "$continuous" != "1" ] && [ "$EUID" -ne 0 ]
   exit
 fi
 
+waitForBtrbkDaemon()
+{
+    while true; do
+	echo "Waiting for btrbk daemon to have its port open..."
+	sleep 3
+	nc -z localhost 8089
+	if [ "$?" == "0" ]; then # netcat (nc) returns exit code 0 when port is open/reachable on that host
+	    break
+	fi
+    done
+}
+
 chownExe()
 {
     dest="$1"
@@ -91,6 +103,9 @@ if [ "$continuous" == "1" ]; then
 			exit 1
 		    fi
 
+		    # Wait till the btrbk daemon warms up and binds the address on the port
+		    waitForBtrbkDaemon
+
 		    trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT # Install signal handlers that, when systemd kills this process, then it will kill children ("the whole process group") too ( https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits )
 		    # Run it
 		    ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup"
@@ -100,15 +115,9 @@ if [ "$continuous" == "1" ]; then
 		    sudo -v # Get user's password first, then cache it for the below command ( https://unix.stackexchange.com/questions/479178/how-would-you-put-a-job-which-requires-sudo-to-background ) + "The sudoers policy caches credentials for 5 minutes, unless overridden in sudoers(5). By running sudo with the -v option, a user can update the cached credentials without running a command." ( https://www.sudo.ws/docs/man/1.8.25/sudo.man/ ). So, note that the user must not have changed this to be like 0 minutes or something..... we will assume not..
 		    sudo ./btrbk_daemon.py "" "" "$dryRun" "$port" & # NOTE: this script may fail if port 8089 is in use. We will assume it is an exiting btrbk daemon that is causing that failure...
 
-		    # Wait till it warms up and binds the address on the port
-		    while true; do
-			sleep 3
-			nc -z localhost 8089
-			if [ "$?" == "0" ]; then # netcat (nc) returns exit code 0 when port is open/reachable on that host
-			    break
-			fi
-		    done
-
+		    # Wait till the btrbk daemon warms up and binds the address on the port
+		    waitForBtrbkDaemon
+		    
 		    # Run it as a "daemon"
 		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup"
 		fi
