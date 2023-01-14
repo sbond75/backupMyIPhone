@@ -89,7 +89,7 @@ EOF
 function tee_with_timestamps () {
     local logfile=$1
     while read data; do
-	echo "${data}" | sed -e "s/^/$(date '+%T') /" >> "${logfile}"
+	echo "${data}" | sed -e "s/^/$(date '+%F %T') /" >> "${logfile}"
 	echo "${data}"
     done
 }
