@@ -13,6 +13,7 @@ btrfsDaemonPort="$4"
 username="$5" # Set this when running as root to do firstTime setup (only use when firstTime = 1)
 ranWithTeeAlready="$6" # Internal use, leave empty
 snapshotBeforeBackup="$7" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
+useUSB="$8" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -42,7 +43,7 @@ makeSnapshot()
 		echo "Empty $dest/@iosBackups folder, not snapshotting"
 	    else
 		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
-		scriptDir="${BASH_SOURCE[0]}"
+		scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 		echo "[ibackup] btrbk Btrfs snapshot starting:"
 		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
 		if [ "$dryRun" == "1" ]; then
@@ -84,15 +85,8 @@ EOF
 	fi
 }
 
-# https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
-# Usage: `echo "test" | tee_with_timestamps "file.txt"`
-function tee_with_timestamps () {
-    local logfile=$1
-    while read data; do
-	echo "${data}" | sed -e "s/^/$(date '+%F %T') /" >> "${logfile}"
-	echo "${data}"
-    done
-}
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+source "$scriptDir/teeWithTimestamps.sh" # Sets `tee_with_timestamps` function
 
 # https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
 is_in_group()
@@ -112,7 +106,9 @@ is_in_group()
 
 sudo()
 {
-    if [ "$EUID" -ne 0 ]; then
+    if [ "$useUSB" == "1" ]; then
+	command sudo "$@" # https://stackoverflow.com/questions/6365795/invoking-program-when-a-bash-function-has-the-same-name
+    elif [ "$EUID" -ne 0 ]; then
 	echo "Not root, not running $@"
     else
 	"$@"
@@ -185,7 +181,8 @@ EOF
     fi
 }
 dest="/mnt/ironwolf/home/$username"
-dest_usbmuxd="/mnt/ironwolf/home/iosbackup_usbmuxd"
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+source "$scriptDir/destUsbmuxd.sh" # Sets `dest_usbmuxd` variable
 makeDest()
 {
     local dest="$1"
@@ -278,7 +275,7 @@ else
     if [ -z "$ranWithTeeAlready" ]; then
 	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" 2>&1 | tee_with_timestamps "$logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" "$useUSB" 2>&1 | tee_with_timestamps "$logfile"
 	exit
     fi
 fi
@@ -376,8 +373,8 @@ if [[ -f "$CURDATE" ]]; then
 else
     contents=
 fi
-if [ "$contents" = "failed_with_too_many_attempts" ] || [ "$contents" = "success" ]; then
-        echo "[ibackup] Backup for today exists."
+if [[ "$contents" == *"failed_with_too_many_attempts" ]] || [[ "$contents" == *"success" ]]; then
+        echo "[ibackup] Backup for today exists; its status was ${contents}."
         current_epoch=$(date +%s)
         target_epoch=$(date -d "tomorrow 00:00:01" +%s)
         to_sleep=$(( $target_epoch - $current_epoch ))
@@ -394,11 +391,15 @@ CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
 #usbmuxd -v --nousb
 
 userOfRunningUsbmuxd="temp"
+wantedUserOfRunningUsbmuxd="iosbackup_usbmuxd"
+if [ "$useUSB" == "1" ]; then
+    wantedUserOfRunningUsbmuxd="root"
+fi
 noStart=0
 while [ ! -z "$userOfRunningUsbmuxd" ]; do
 	userOfRunningUsbmuxd=$(ps -o user= -p $(pgrep usbmuxd) 2>/dev/null) # https://stackoverflow.com/questions/44758736/redirect-stderr-to-dev-null
 	if [ ! -z "$userOfRunningUsbmuxd" ]; then
-	    if [ "iosbackup_usbmuxd" == "$userOfRunningUsbmuxd" ]; then #if [ "$username" == "$userOfRunningUsbmuxd" ]; then
+	    if [ "$wantedUserOfRunningUsbmuxd" == "$userOfRunningUsbmuxd" ]; then #if [ "$username" == "$userOfRunningUsbmuxd" ]; then
 		noStart=1
 		break
 	    fi
@@ -408,16 +409,9 @@ while [ ! -z "$userOfRunningUsbmuxd" ]; do
 	    sleep "$seconds"
 	fi
 done
-if [ "$noStart" == "0" ]; then # NOTE: this may start up anyway despite there not being any other users... and that is ok, it will just have permission denied since one user owns the logfile at a time (the one who spawned it, currently)..
-    logfile_usbmuxd="$dest_usbmuxd/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
-    echo "[ibackup] Starting network daemon with logfile ${logfile_usbmuxd}..."
-    
-    # (Run original `sudo` command, not wrapped sudo function in bash near the top of this script:)
-    # Nohup so it runs as a "daemon":
-    sudo_="$(PATH="/run/wrappers/bin/:$PATH" which sudo)"
-    export -f tee_with_timestamps # export the function to make it available in the child process ( https://unix.stackexchange.com/questions/22796/can-i-export-functions-in-bash )
-    (nohup bash -c '"$1" -u iosbackup_usbmuxd usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$2"' bash "$sudo_" "$logfile_usbmuxd" &) & # https://stackoverflow.com/questions/3430330/best-way-to-make-a-shell-script-daemon
-    #runuser -u iosbackup_usbmuxd -- usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$logfile_usbmuxd" &
+if [ "$useUSB" != "1" ]; then
+    scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+    source "$scriptDir/spawnUsbmuxd.sh" # Spawn usbmuxd if noStart == 0
 fi
 
 echo "[ibackup] Waiting for network daemon..."
@@ -435,7 +429,14 @@ while : ; do
 		fi
                 break
         fi
-	output=$(ideviceinfo --udid "$deviceToConnectTo" -n 2>&1)
+	if [ "$useUSB" == "1" ]; then
+	    extras=
+	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh")"' ./shell_wifi_pair.nix'
+	else
+	    extras="-n"
+	    extras2=
+	fi
+	output=$($extras2 ideviceinfo --udid "$deviceToConnectTo" $extras 2>&1)
         dv=$?
         if [ $dv -eq 0 ]; then
                 echo "[ibackup] Device is online."
@@ -444,7 +445,7 @@ while : ; do
 		echo "[ibackup] (End of ideviceinfo output)"
                 break
         fi
-        echo "[ibackup] Device is offline, sleeping a bit until retrying [$try]..."
+        echo "[ibackup] Device is offline (ideviceinfo output was $output), sleeping a bit until retrying [$try]..."
         sleep $((10 * try)) # "Linear" backoff (instead of exponential backoff or something like that, to retry again but wait longer each time)
 done
 if [[ -f "$CURDATE" ]]; then
@@ -452,9 +453,9 @@ if [[ -f "$CURDATE" ]]; then
 else
     contents=
 fi
-if [ "$contents" = "success" ] || [ "$contents" = "failed" ]; then
-    echo "[ibackup] Weird thing that shouldn't really happen: $CURDATE file says $contents at the end despite not having run the backup yet. (Backup will continue tomorrow, etc., as if it timed out waiting for the device too many times.) Contents of the entire file are: $(cat "$CURDATE")"
-elif [ "$contents" = "failed_with_too_many_attempts" ]; then
+if [[ "$contents" == *"success" || "$contents" == *"failed" ]]; then
+    echo "[ibackup] Weird thing that shouldn't really happen (but likely due to the ibackup script restarting): $CURDATE file says $contents at the end despite not having run the backup yet. (Backup will continue tomorrow, etc., as if it timed out waiting for the device too many times.) Contents of the entire file are: $(cat "$CURDATE")"
+elif [[ "$contents" == *"failed_with_too_many_attempts" ]]; then
         echo "[ibackup] Timed out waiting for device, maybe we'll backup tomorrow."
 else
         echo "[ibackup] Backing up..."
@@ -478,7 +479,14 @@ else
 	# fi
 	
 	# Back up
-        cmd='idevicebackup2 --udid '"$deviceToConnectTo"' -n backup '"/mnt/ironwolf/home/$username/@iosBackups"''
+	if [ "$useUSB" == "1" ]; then
+	    extras=
+	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh")"' ./shell_wifi_pair.nix'
+	else
+	    extras="-n"
+	    extras2=
+	fi
+        cmd="$extras2 "'idevicebackup2 --udid '"$deviceToConnectTo"' '"$extras"' backup '"/mnt/ironwolf/home/$username/@iosBackups"''
 	if [ "$dryRun" == "1" ]; then
 	    echo $cmd
 	else

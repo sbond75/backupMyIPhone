@@ -59,6 +59,7 @@ if [ "$continuous" == "1" ]; then
 	# The thing is, here, we need the device's ID to know how to reach it beforehand. So you need to provide a command-line argument for which device to connect to (UUID):
         deviceToConnectTo="$5" # Leave empty if $firstTime is 1
 	snapshotBeforeBackup="$6" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
+	useUSB="$7" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
 
 	# Prepare perms
 	if [ "$EUID" -ne 0 ]; then
@@ -119,7 +120,16 @@ if [ "$continuous" == "1" ]; then
 		    waitForBtrbkDaemon
 		    
 		    # Run it as a "daemon"
-		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup"
+		    if [ "$useUSB" == "1" ]; then
+			# Spawn usbmuxd as root for USB access
+			noStart=0
+			scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+			source "$scriptDir/destUsbmuxd.sh" # Sets `dest_usbmuxd` variable
+			source "$scriptDir/teeWithTimestamps.sh" # Sets `tee_with_timestamps` function
+			
+			source "$scriptDir/spawnUsbmuxd.sh" # Spawn usbmuxd if noStart == 0
+		    fi
+		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB"
 		fi
 	    fi
 	else

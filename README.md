@@ -2,6 +2,7 @@
 
 ## Demo
 
+1. Run this to start the avahi daemon: `systemctl start avahi-daemon.service` # TODO: install how to
 1. Initialize:
    1. `sudo groupadd iosbackup` to make the `iosbackup` group
    2. Make a user just for usbmuxd in the `iosbackup` group:
@@ -24,6 +25,8 @@
 		  - `./backupMyIPhone.sh '' 1 0 0 'YourDeviceUDIDHere'`
 	  2. Or: to backup immediately once if it can connect and also repeating every day -- dry run:
 		  - `./backupMyIPhone.sh '' 1 0 1 'YourDeviceUDIDHere'`
+	  3. Or: to backup via USB instead (it will start usbmuxd as root with sudo):
+		  - `./backupMyIPhone.sh "" 1 0 0 'YourDeviceUDIDHere' 0 1
 3. Run `./ibackup.sh` (with additional arguments like the above) for as many users as needed to make the backup daemons for each user. (They should all end up sharing the same usbmuxd instance.)
 
 ## Tools
