@@ -14,12 +14,20 @@ username="$5" # Set this when running as root to do firstTime setup (only use wh
 ranWithTeeAlready="$6" # Internal use, leave empty
 snapshotBeforeBackup="$7" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
 useUSB="$8" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
+nixShellToUseForUSB="$9" # Only works when useUSB == 1. Leave blank to use ./shell_wifi_pair.nix as the nix shell for the libimobiledevice tools like ideviceinfo and idevicebackup2. If not blank, this should be the path to a nix shell file to use for USB backups.
 
 if [ "$dryRun" == "1" ]; then
     set -x
 fi
 
 echo "[ibackup] Starting up with args $@"
+
+if [ -z "$nixShellToUseForUSB" ]; then
+    nixShellToUseForUSB='./shell_wifi_pair.nix'
+elif [ "$useUSB" != 1 ]; then
+    echo "Unsupported options provided: useUSB != 1 and nixShellToUseForUSB is not empty. Exiting."
+    exit 1
+fi
 
 makeSnapshot()
 {
@@ -275,7 +283,7 @@ else
     if [ -z "$ranWithTeeAlready" ]; then
 	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" "$useUSB" 2>&1 | tee_with_timestamps "$logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" 2>&1 | tee_with_timestamps "$logfile"
 	exit
     fi
 fi
@@ -431,7 +439,7 @@ while : ; do
         fi
 	if [ "$useUSB" == "1" ]; then
 	    extras=
-	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh")"' ./shell_wifi_pair.nix'
+	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh") $(printf '%q' "$nixShellToUseForUSB")"
 	else
 	    extras="-n"
 	    extras2=
@@ -481,7 +489,7 @@ else
 	# Back up
 	if [ "$useUSB" == "1" ]; then
 	    extras=
-	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh")"' ./shell_wifi_pair.nix'
+	    extras2="bash $(printf '%q' "$scriptDir/runWithNixBash.sh") $(printf '%q' "$nixShellToUseForUSB")"
 	else
 	    extras="-n"
 	    extras2=

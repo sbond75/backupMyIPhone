@@ -26,7 +26,7 @@
 	  2. Or: to backup immediately once if it can connect and also repeating every day -- dry run:
 		  - `./backupMyIPhone.sh '' 1 0 1 'YourDeviceUDIDHere'`
 	  3. Or: to backup via USB instead (it will start usbmuxd as root with sudo):
-		  - `./backupMyIPhone.sh "" 1 0 0 'YourDeviceUDIDHere' 0 1
+		  - Run without the `sudo -E su --preserve-environment UserNameHere` shell mentioned above: `./backupMyIPhone.sh "" 1 0 0 'YourDeviceUDIDHere' 0 1 ./shell_new_libimobiledevice.nix` (last argument is optional; it provides a Nix shell that has a newer libusbmuxd version of your choice)
 3. Run `./ibackup.sh` (with additional arguments like the above) for as many users as needed to make the backup daemons for each user. (They should all end up sharing the same usbmuxd instance.)
 
 ## Tools

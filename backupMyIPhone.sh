@@ -60,6 +60,7 @@ if [ "$continuous" == "1" ]; then
         deviceToConnectTo="$5" # Leave empty if $firstTime is 1
 	snapshotBeforeBackup="$6" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
 	useUSB="$7" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
+	nixShellToUseForUSB="$8" # Only works when useUSB == 1. Leave blank to use ./shell_wifi_pair.nix as the nix shell for the libimobiledevice tools like ideviceinfo and idevicebackup2. If not blank, this should be the path to a nix shell file to use for USB backups.
 
 	# Prepare perms
 	if [ "$EUID" -ne 0 ]; then
@@ -129,7 +130,7 @@ if [ "$continuous" == "1" ]; then
 			
 			source "$scriptDir/spawnUsbmuxd.sh" # Spawn usbmuxd if noStart == 0
 		    fi
-		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB"
+		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB"
 		fi
 	    fi
 	else

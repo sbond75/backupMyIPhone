@@ -2,6 +2,7 @@
 # noStart
 # dest_usbmuxd
 # tee_with_timestamps
+# nixShellToUseForUSB
 
 if [ "$noStart" == "0" ]; then # NOTE: this may start up anyway despite there not being any other users... and that is ok, it will just have permission denied since one user owns the logfile at a time (the one who spawned it, currently)..
     logfile_usbmuxd="$dest_usbmuxd/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
@@ -32,7 +33,7 @@ if [ "$noStart" == "0" ]; then # NOTE: this may start up anyway despite there no
     if [ "$useUSB" == "1" ]; then
 	#sudo bash -c 'usbmuxd -vv '"$nousb"' --debug 2>&1 | tee_with_timestamps "$2"' bash "" "$logfile_usbmuxd" # https://stackoverflow.com/questions/26109878/running-a-program-in-the-background-as-sudo
 	#(bash -c '"$1" '"$user"' usbmuxd -vv '"$nousb"' --debug 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
-	(bash -c '"$1" '"$user"' bash '"$(printf '%q' "$scriptDir/runWithNixBash.sh")"' ./shell_wifi_pair.nix usbmuxd -vv --foreground '"$nousb"' 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
+	(bash -c '"$1" '"$user"' bash '"$(printf '%q' "$scriptDir/runWithNixBash.sh")"' '"$(printf '%q' "$nixShellToUseForUSB")"' usbmuxd -vv --foreground '"$nousb"' 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
     else
 	(nohup bash -c '"$1" '"$user"' usbmuxd -vv '"$nousb"' --debug 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) & # https://stackoverflow.com/questions/3430330/best-way-to-make-a-shell-script-daemon
     fi
