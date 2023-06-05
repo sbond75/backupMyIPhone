@@ -30,12 +30,20 @@ if [ "$noStart" == "0" ]; then # NOTE: this may start up anyway despite there no
 	maybeSudoEnd=
     fi
 
+    if [ "$quietUsbmuxd" == 1 ]; then
+	extrasVerbose1=''
+	extrasVerbose2=''
+    else
+	extrasVerbose1='-vv'
+	extrasVerbose2='--debug'
+    fi
+
     if [ "$useUSB" == "1" ]; then
 	#sudo bash -c 'usbmuxd -vv '"$nousb"' --debug 2>&1 | tee_with_timestamps "$2"' bash "" "$logfile_usbmuxd" # https://stackoverflow.com/questions/26109878/running-a-program-in-the-background-as-sudo
 	#(bash -c '"$1" '"$user"' usbmuxd -vv '"$nousb"' --debug 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
-	(bash -c '"$1" '"$user"' bash '"$(printf '%q' "$scriptDir/runWithNixBash.sh")"' '"$(printf '%q' "$nixShellToUseForUSB")"' usbmuxd -vv --foreground '"$nousb"' 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
+	(bash -c '"$1" '"$user"' bash '"$(printf '%q' "$scriptDir/runWithNixBash.sh")"' '"$(printf '%q' "$nixShellToUseForUSB")"' usbmuxd '"$extrasVerbose1"' --foreground '"$nousb"' 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) &
     else
-	(nohup bash -c '"$1" '"$user"' usbmuxd -vv '"$nousb"' --debug 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) & # https://stackoverflow.com/questions/3430330/best-way-to-make-a-shell-script-daemon
+	(nohup bash -c '"$1" '"$user"' usbmuxd '"$extrasVerbose1"' '"$nousb"' '"extrasVerbose2"' 2>&1 | '"$maybeSudo"' '"$maybeSudoEnd" bash "$sudo_" "$logfile_usbmuxd" &) & # https://stackoverflow.com/questions/3430330/best-way-to-make-a-shell-script-daemon
     fi
     
     #runuser -u iosbackup_usbmuxd -- usbmuxd -vv --nousb --debug 2>&1 | tee_with_timestamps "$logfile_usbmuxd" &

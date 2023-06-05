@@ -15,6 +15,7 @@ ranWithTeeAlready="$6" # Internal use, leave empty
 snapshotBeforeBackup="$7" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
 useUSB="$8" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
 nixShellToUseForUSB="$9" # Only works when useUSB == 1. Leave blank to use ./shell_wifi_pair.nix as the nix shell for the libimobiledevice tools like ideviceinfo and idevicebackup2. If not blank, this should be the path to a nix shell file to use for USB backups.
+quietUsbmuxd="$10" # Optional. 1 to make usbmuxd not print as much
 
 if [ "$dryRun" == "1" ]; then
     set -x
@@ -283,7 +284,7 @@ else
     if [ -z "$ranWithTeeAlready" ]; then
 	logfile="$dest/logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 	echo "[ibackup] Running with tee to logfile $logfile"
-	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" 2>&1 | tee_with_timestamps "$logfile"
+	bash "$0" "$deviceToConnectTo" "$firstTime" "$dryRun" "$btrfsDaemonPort" "$username" "$logfile" "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" "$quietUsbmuxd" 2>&1 | tee_with_timestamps "$logfile"
 	exit
     fi
 fi
@@ -382,7 +383,7 @@ else
     contents=
 fi
 if [[ "$contents" == *"failed_with_too_many_attempts" ]] || [[ "$contents" == *"success" ]]; then
-        echo "[ibackup] Backup for today exists; its status was ${contents}."
+        echo "[ibackup] Backup for today exists; its status was ${contents}. (This status was found at ${CURDATE}.)"
         current_epoch=$(date +%s)
         target_epoch=$(date -d "tomorrow 00:00:01" +%s)
         to_sleep=$(( $target_epoch - $current_epoch ))

@@ -61,6 +61,7 @@ if [ "$continuous" == "1" ]; then
 	snapshotBeforeBackup="$6" # 1 to make a snapshot before backing up, then exit without backing up. Leave empty usually.
 	useUSB="$7" # 1 to backup via USB instead of WiFi. Requires root (will prompt for sudo access). This argument has no effect when running from systemd. Leave empty usually.
 	nixShellToUseForUSB="$8" # Only works when useUSB == 1. Leave blank to use ./shell_wifi_pair.nix as the nix shell for the libimobiledevice tools like ideviceinfo and idevicebackup2. If not blank, this should be the path to a nix shell file to use for USB backups.
+	quietUsbmuxd="$9" # Optional. 1 to make usbmuxd not print as much
 
 	# Prepare perms
 	if [ "$EUID" -ne 0 ]; then
@@ -87,7 +88,7 @@ if [ "$continuous" == "1" ]; then
 	    echo "Backing up as user $username"
 
 	    if [ "$firstTime" == "1" ]; then
-		sudo ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" "$username" '' "$snapshotBeforeBackup"
+		sudo ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" "$username" '' "$snapshotBeforeBackup" '' '' "$quietUsbmuxd"
 	    else
 		#port=$((8089 + $(id -u "$username")))
 		port=8089
@@ -110,7 +111,7 @@ if [ "$continuous" == "1" ]; then
 
 		    trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT # Install signal handlers that, when systemd kills this process, then it will kill children ("the whole process group") too ( https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits )
 		    # Run it
-		    ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup"
+		    ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" '' '' "$quietUsbmuxd"
 		else
 		    # Run btrbk "daemon", as sudo so btrfs snapshots work
 		    echo "Starting btrbk daemon..."
@@ -130,7 +131,7 @@ if [ "$continuous" == "1" ]; then
 			
 			source "$scriptDir/spawnUsbmuxd.sh" # Spawn usbmuxd if noStart == 0
 		    fi
-		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB"
+		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" "$quietUsbmuxd"
 		fi
 	    fi
 	else
