@@ -54,7 +54,11 @@ chownExe()
 }
 
 if [ "$continuous" == "1" ]; then
-	mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+	# Grab config
+	scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+	source "$scriptDir/config.sh"
+
+	mountpoint "$config__drive" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
 
 	# The thing is, here, we need the device's ID to know how to reach it beforehand. So you need to provide a command-line argument for which device to connect to (UUID):
         deviceToConnectTo="$5" # Leave empty if $firstTime is 1

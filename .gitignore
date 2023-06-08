@@ -2,3 +2,4 @@ libimobiledevice.git/
 *.swp
 __pycache__/
 /udidToFolderLookupTable.py
+/config.sh

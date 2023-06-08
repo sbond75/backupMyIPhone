@@ -54,7 +54,7 @@ makeSnapshot()
 		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
 		scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 		echo "[ibackup] btrbk Btrfs snapshot starting:"
-		mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+		mountpoint "$config__drive" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
 		if [ "$dryRun" == "1" ]; then
 		    run=dryrun
 		    #run=run
@@ -75,7 +75,7 @@ snapshot_preserve          14d
 target_preserve_min        all
 target_preserve            no
 snapshot_preserve       14d
-volume /mnt/ironwolf
+volume $config__drive
   snapshot_create  onchange
   subvolume home/$username/@iosBackups
 EOF
@@ -96,6 +96,9 @@ EOF
 
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 source "$scriptDir/teeWithTimestamps.sh" # Sets `tee_with_timestamps` function
+
+# Grab config
+source "$scriptDir/config.sh"
 
 # https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
 is_in_group()
@@ -189,7 +192,7 @@ EOF
 	chmod 277${perms: -1} "$dest" # https://stackoverflow.com/questions/17542892/how-to-get-the-last-character-of-a-string-in-a-shell
     fi
 }
-dest="/mnt/ironwolf/home/$username"
+dest="$config__drive/home/$username"
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 source "$scriptDir/destUsbmuxd.sh" # Sets `dest_usbmuxd` variable
 makeDest()
@@ -236,7 +239,7 @@ if [ "$EUID" -eq 0 ]; then
     fi
     echo "Running as root doing basic firstTime setup. Afterwards, run this script as a non-root user in the iosbackup group."
     
-    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+    mountpoint "$config__drive" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
     makeDest "$dest" 1
     makeDest "$dest_usbmuxd" 1
     if [ ! -e "$dest/@iosBackups" ]; then
@@ -252,7 +255,7 @@ if [ "$EUID" -eq 0 ]; then
     makeDest "$dest/@iosBackups" 0
 
     snaps="$dest/_btrbk_snap"
-    mountpoint /mnt/ironwolf || { echo "Error: ironwolf drive not mounted. Exiting."; exit 1; }
+    mountpoint "$config__drive" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
     if [ ! -e "$snaps" ]; then
 	parent="$(dirname "$snaps")"
 	# "If you want an error when parent directories don't exist, and want to create the directory if it doesn't exist, then you can test [ https://pubs.opengroup.org/onlinepubs/009695399/utilities/test.html ] for the existence of the directory first:" ( https://stackoverflow.com/questions/793858/how-to-mkdir-only-if-a-directory-does-not-already-exist )
@@ -375,7 +378,7 @@ try=0
 
 
 #successOrFailLogsBaseFolder="/var/run/usbmuxd.d"
-successOrFailLogsBaseFolder="/mnt/ironwolf/home/iosbackup_usbmuxd/logs"
+successOrFailLogsBaseFolder="$config__drive/home/iosbackup_usbmuxd/logs"
 CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"
 if [[ -f "$CURDATE" ]]; then
     contents="$(tail -n 1 "$CURDATE")"
@@ -495,7 +498,7 @@ else
 	    extras="-n"
 	    extras2=
 	fi
-        cmd="$extras2 "'idevicebackup2 --udid '"$deviceToConnectTo"' '"$extras"' backup '"/mnt/ironwolf/home/$username/@iosBackups"''
+        cmd="$extras2 "'idevicebackup2 --udid '"$deviceToConnectTo"' '"$extras"' backup '"$config__drive/home/$username/@iosBackups"''
 	if [ "$dryRun" == "1" ]; then
 	    echo $cmd
 	else
