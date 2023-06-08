@@ -6,7 +6,8 @@ A tool to take control of backing up your iOS device to your own server via Wi-F
 
 1. Run this to start the avahi daemon: `systemctl start avahi-daemon.service` # TODO: install how to
 1. Initialize:
-   1. Add a destination backup drive to a new file in the repo root, `config.sh`, by basing the file off a copy of the one in `template` folder made with: `cp template/config.sh ./` and then editing the copy.
+   1. Add a destination backup drive to a new file in the repo root, `config.sh`, by basing the file off a copy of the one in `template` folder made with: `cp template/config.sh ./` and then editing the copy. You should enter in something like `/mnt/yourDriveMountPointHere/home`, where the `/mnt/yourDriveMountPointHere` part can be anything as long as it is a valid mountpoint (`mountpoint /mnt/yourDriveMountPointHere`should return an exit code of 0).
+   2. In the destination backup drive mentioned above, make a new folder called `home`.
    1. `sudo groupadd iosbackup` to make the `iosbackup` group
    2. Make a user just for usbmuxd in the `iosbackup` group:
 	  1. `sudo useradd iosbackup_usbmuxd`
