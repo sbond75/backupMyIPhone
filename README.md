@@ -1,5 +1,7 @@
 # backupMyIPhone
 
+A tool to take control of backing up your iOS device to your own server via Wi-Fi or USB.
+
 ## Demo
 
 1. Run this to start the avahi daemon: `systemctl start avahi-daemon.service` # TODO: install how to
