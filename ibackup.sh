@@ -25,8 +25,8 @@ echo "[ibackup] Starting up with args $@"
 
 if [ -z "$nixShellToUseForUSB" ]; then
     nixShellToUseForUSB='./shell_wifi_pair.nix'
-elif [ "$useUSB" != 1 ]; then
-    echo "Unsupported options provided: useUSB != 1 and nixShellToUseForUSB is not empty. Exiting."
+elif [ "$useUSB" != 1 && ! -z "$ranWithTeeAlready" ]; then # (ranWithTeeAlready sets nixShellToUseForUSB so we can't check for it being non-empty here due to the above if-statement not being true)
+    echo "Unsupported options provided: useUSB != 1 and nixShellToUseForUSB is not empty (it is $nixShellToUseForUSB). Exiting."
     exit 1
 fi
 
