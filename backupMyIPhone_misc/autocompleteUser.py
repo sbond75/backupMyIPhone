@@ -1,7 +1,8 @@
 from sys import path
 import os
 scriptDir=os.path.dirname(os.path.realpath(__file__))
-path.append(os.path.join(os.path.dirname(scriptDir), 'backupMyIPhone'))
+#path.append(os.path.join(os.path.dirname(scriptDir), 'backupMyIPhone'))
+path.append(os.path.dirname(scriptDir))
 import udidToFolderLookupTable as u
 from sys import argv
 
