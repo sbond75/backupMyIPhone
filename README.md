@@ -16,7 +16,7 @@
 	  1. Plug the device in to the computer via USB
 	  1. `sudo ./backupMyIPhone.sh '' 1 1 0`, note the UDID from the output
 	  2. Enter passcode and "Trust this computer" on the device
-	  2. Add your device UDID (shows in the output from the above `./backupMyIPhone.sh` command) to `udidToFolderLookupTable.py`
+	  2. Add your device UDID (shows in the output from the above `./backupMyIPhone.sh` command) to a new file in the repo root, `udidToFolderLookupTable.py`, by basing the file off a copy of the one in `template` folder made with: `cp template/udidToFolderLookupTable.py ./`
 	  3. `sudo ./backupMyIPhone.sh '' 1 1 0 YourDeviceUDIDHere` (where `YourDeviceUDIDHere` is the UDID you saw) to perform first-time setup. This requires the device to be connected via USB.
 	  4. `sudo pkill usbmuxd` at the end.
 2. `sudo -E su --preserve-environment UserNameHere` (where `UserNameHere` is a user created above) and then run one of the following in this shell to make a backup. The following commands don't require the device to be connected to the computer via USB, only to be plugged in and charging somewhere on the same local WiFi network.
