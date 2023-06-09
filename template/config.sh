@@ -2,3 +2,6 @@
 
 # Destination drive for the backup. This must be a mountpoint (i.e., `mountpoint` command must return exit code 0 when run with this as an argument) and must be a Btrfs filesystem.
 config__drive=/mnt/someMountPointHere
+
+# Destination directory for the backup when run from a client (remotely transmitting a backup made from an iOS device connected to the "client" computer which is sent to a "server" computer running ibackupServer.sh)
+config__clientDirectory=/home/pi/Projects/backupMyIPhone_logs
