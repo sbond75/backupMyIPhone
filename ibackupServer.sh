@@ -11,8 +11,8 @@ startBackup() {
 
 finishBackup() {
     local udid="$1"
-    # Just make a snapshot, then exit (the `1` after "$udid" does this)
-    ./backupMyIPhone.sh '' 1 0 0 "$udid" 1
+    # # Just make a snapshot, then exit (the `1` after "$udid" does this)
+    # ./backupMyIPhone.sh '' 1 0 0 "$udid" 1
 }
 
 runCommand() {

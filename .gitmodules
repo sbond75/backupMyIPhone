@@ -1,3 +1,6 @@
 [submodule "libimobiledevice"]
 	path = libimobiledevice
 	url = https://github.com/sbond75/libimobiledevice.git
+[submodule "fuse/go-fuseftp"]
+	path = fuse/go-fuseftp
+	url = https://github.com/datawire/go-fuseftp
