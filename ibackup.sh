@@ -313,7 +313,7 @@ if [ "$firstTime" == "1" ]; then
 	pgrep -u root usbmuxd || { sudo `which usbmuxd` -X;
 	}
 	
-	# Fire up the beast (usbmuxd also spawns its own stuff) which grabs network devices but is also using sudo so we can acess USB for this firstTime setup.
+	# Fire up the beast (usbmuxd also spawns its own stuff) which grabs network devices but is also using sudo so we can access USB for this firstTime setup.
         sudo `which usbmuxd` -v & # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd2.)
 
 	sleep 5

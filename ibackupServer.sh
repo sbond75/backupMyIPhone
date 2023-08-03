@@ -1,6 +1,13 @@
 #! /usr/bin/env nix-shell
 #! nix-shell -i bash -p netcat-gnu samba
 
+# NOTE: For setup, run these commands on the server (assumed to be running NixOS):
+# cd /etc/nixos
+# sudo mkdir openssl_certificates
+# cd openssl_certificates
+# sudo chmod o-rx .
+# sudo openssl req -x509 -nodes -days 358000 -newkey rsa:4096 -keyout vsftpd.pem -out vsftpd.pem
+
 startBackup() {
     local udid="$1"
     # With backupMyIPhone.sh, just make a snapshot, then exit (the `1` after "$udid" does this)
