@@ -32,6 +32,7 @@ if [ ! -e "$config__clientDirectory" ]; then
     mkdir "$config__clientDirectory"
 fi
 
+dest="$config__clientDirectory"
 if [ ! -e "$dest" ]; then
     mkdir "$dest"
 fi
@@ -43,7 +44,6 @@ if [ ! -e "$logsDir" ]; then
 fi
 
 # Re-run with tee if needed
-dest="$config__clientDirectory"
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackup] Running with tee to logfile $logfile"
     bash "$0" "1" 2>&1 | tee_with_timestamps "$logfile"
