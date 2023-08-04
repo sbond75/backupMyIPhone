@@ -5,23 +5,15 @@
   url = "https://github.com/NixOS/nixpkgs/archive/702d1834218e483ab630a3414a47f3a537f94182.tar.gz";
   # Hash obtained using `nix-prefetch-url --unpack <url>`
   sha256 = "1vs08avqidij5mznb475k5qb74dkjvnsd745aix27qcw55rm0pwb";
-}) { }}:
-with pkgs;
-
-# Apply overlay (for raspberry pi to work)
-let
-  myOverlay = if pkgs.system == "armv7l-linux" then (self: super: {
+}) {
+  # Apply overlay (for raspberry pi to work)
+  if pkgs.system == "armv7l-linux" then (self: super: {
     libxcrypt = super.libxcrypt.overrideAttrs {
       doCheck = false;
     };
-  }) else [];
-  nixpkgs = import pkgs {};
-  finalPkgs = import pkgs {
-    # Identity: overlays = [];
-    overlays = [ myOverlay ];
-  };
-in
-with finalPkgs;
+  }) else []
+}}:
+with pkgs;
 
 mkShell {
   buildInputs = [
