@@ -7,11 +7,11 @@
   sha256 = "1vs08avqidij5mznb475k5qb74dkjvnsd745aix27qcw55rm0pwb";
 }) {
   # Apply overlay (for raspberry pi to work)
-  overlays = if pkgs.system == "armv7l-linux" then (self: super: {
-    libxcrypt = super.libxcrypt.overrideAttrs {
+  overlays = (self: super: {
+    libxcrypt = if pkgs.system == "armv7l-linux" then super.libxcrypt.overrideAttrs {
       doCheck = false;
-    };
-  }) else [];
+    } else super.libxcrypt;
+  });
 }}:
 with pkgs;
 
