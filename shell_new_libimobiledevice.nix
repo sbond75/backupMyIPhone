@@ -8,7 +8,7 @@
 }) {
   # Apply overlay (for raspberry pi to work)
   overlays = (self: super: {
-    libxcrypt = if pkgs.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs {
+    libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs {
       doCheck = false;
     }) else super.libxcrypt;
   });
