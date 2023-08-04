@@ -8,6 +8,21 @@
 }) { }}:
 with pkgs;
 
+# Apply overlay (for raspberry pi to work)
+let
+  myOverlay = if pkgs.system == "armv7l-linux" then (self: super: {
+    libxcrypt = super.libxcrypt.overrideAttrs {
+      doCheck = false;
+    };
+  }) else [];
+  nixpkgs = import pkgs {};
+  finalPkgs = import pkgs {
+    # Identity: overlays = [];
+    overlays = [ myOverlay ];
+  };
+in
+with finalPkgs;
+
 mkShell {
   buildInputs = [
     (callPackage ./libimobiledevice/libimobiledevice_new.nix {
