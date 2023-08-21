@@ -10,7 +10,10 @@
   overlays = [
     (self: super: {
       libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
-        doCheck = false;
+        #doCheck = false;
+        patchPhase = ''
+          substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
+        '';
       })) else super.libxcrypt;
     })
   ];
