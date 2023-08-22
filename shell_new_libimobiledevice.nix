@@ -13,7 +13,7 @@
         #doCheck = false;
         patchPhase = ''
           #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
-          substituteInPlace test/alg-yescrypt.c "return 77; /* UNSUPPORTED */" "return 0;"
+          substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
         '';
       })) else super.libxcrypt;
     })
