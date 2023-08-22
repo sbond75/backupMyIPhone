@@ -21,7 +21,7 @@ mkShell {
     #   #enablePython=true; # doesn't work
     # })
     #usbmuxd
-    (callPackage ./usbmuxd/usbmuxd.nix {libimobiledevice=libimobiledevice;})
+    #(callPackage ./usbmuxd/usbmuxd.nix {libimobiledevice=libimobiledevice;})
     # pkg-config
 
     # python3
