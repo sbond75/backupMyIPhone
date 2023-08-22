@@ -32,6 +32,7 @@ with finalPkgs;
 
 mkShell {
   buildInputs = [
+    libxcrypt
     (callPackage ./libimobiledevice/libimobiledevice_new.nix {
       enablePython=false;
       #enablePython=true; # doesn't work
