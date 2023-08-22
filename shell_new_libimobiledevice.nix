@@ -14,7 +14,8 @@ mkShell {
     #   enablePython=false;
     #   #enablePython=true; # doesn't work
     # })
-    usbmuxd
+    #usbmuxd
+    (callPackage ./usbmuxd/usbmuxd.nix {})
     # pkg-config
 
     # python3
