@@ -26,8 +26,8 @@ stdenv.mkDerivation rec {
   ];
 
   propagatedBuildInputs = [
-    #libimobiledevice
-    #libusb1
+    libimobiledevice
+    libusb1
   ];
 
   preAutoreconf = ''

@@ -9,10 +9,10 @@
 with pkgs;
 
 let
-libimobiledevice = (callPackage ./libimobiledevice/libimobiledevice_new.nix {
-  enablePython=false;
-  #enablePython=true; # doesn't work
-});
+  libimobiledevice = (callPackage ./libimobiledevice/libimobiledevice_new.nix {
+    enablePython=false;
+    #enablePython=true; # doesn't work
+  });
 in
 mkShell {
   buildInputs = [
@@ -20,15 +20,16 @@ mkShell {
     #   enablePython=false;
     #   #enablePython=true; # doesn't work
     # })
-    usbmuxd
-    #(callPackage ./usbmuxd/usbmuxd.nix {libimobiledevice=libimobiledevice;})
+    libimobiledevice
+    #usbmuxd
+    (callPackage ./usbmuxd/usbmuxd.nix {libimobiledevice=libimobiledevice;})
     pkg-config
 
-    # python3
-    # util-linux
-    # lsof
-    # (callPackage ./btrbk.nix {})
-    # procps
-    # which
+    python3
+    util-linux
+    lsof
+    (callPackage ./btrbk.nix {})
+    procps
+    which
   ];
 }
