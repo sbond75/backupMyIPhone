@@ -1,4 +1,4 @@
-{ pkgs ? import (builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
+{ pkgs ? (builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   # Descriptive name to make the store path easier to identify
   name = "nixos-unstable-2020-09-03";
   # Commit hash for nixos-unstable as of the date above
