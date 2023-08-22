@@ -9,7 +9,7 @@
   # Apply overlay (for raspberry pi to work)
   overlays = [
     (self: super: {
-      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
+      libxcrypt = if self.system == "armv7l-linux" then (self.libxcrypt.overrideAttrs (oldAttrs: rec {
         #doCheck = false;
         #patchPhase = ''
         prePatch = ''
@@ -17,7 +17,7 @@
           #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
           substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
         '';
-      })) else super.libxcrypt;
+      })) else self.libxcrypt;
     })
   ];
 }}:
@@ -25,7 +25,6 @@ with pkgs;
 
 mkShell {
   buildInputs = [
-    libxcrypt
     (callPackage ./libimobiledevice/libimobiledevice_new.nix {
       enablePython=false;
       #enablePython=true; # doesn't work
