@@ -9,14 +9,27 @@
   # Apply overlay (for raspberry pi to work)
   overlays = [
     (self: super: {
-      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideDerivation (oldAttrs: rec {
-        #doCheck = false;
-        # patchPhase = ''
-        #   echo "@@@@@@ in overlay"
-        #   #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
-        #   substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
-        # '';
+      # libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideDerivation (oldAttrs: rec {
+    #     #doCheck = false;
+    #     # patchPhase = ''
+    #     #   echo "@@@@@@ in overlay"
+    #     #   #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
+    #     #   substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
+    #     # '';
 
+    #     passsthru.enabledCryptSchemeIds = [
+    #   # https://github.com/besser82/libxcrypt/blob/v4.4.33/lib/hashes.conf
+    #   #"y"   # yescrypt
+    #   "gy"  # gost_yescrypt
+    #   "7"   # scrypt
+    #   "2b"  # bcrypt
+    #   "2y"  # bcrypt_y
+    #   "2a"  # bcrypt_a
+    #   "6"   # sha512crypt
+    # ];
+    #   })) else super.libxcrypt;
+
+      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override (oldArgs: rec {
         passsthru.enabledCryptSchemeIds = [
       # https://github.com/besser82/libxcrypt/blob/v4.4.33/lib/hashes.conf
       #"y"   # yescrypt
