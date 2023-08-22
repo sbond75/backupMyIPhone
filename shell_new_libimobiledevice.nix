@@ -15,8 +15,8 @@ builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   url = "https://github.com/NixOS/nixpkgs/archive/702d1834218e483ab630a3414a47f3a537f94182.tar.gz";
   # Hash obtained using `nix-prefetch-url --unpack <url>`
   sha256 = "1vs08avqidij5mznb475k5qb74dkjvnsd745aix27qcw55rm0pwb";
-})) {}}:
-with pkgs;
+}))}:
+with (import pkgs {});
 
 let
   libimobiledevice = (callPackage ./libimobiledevice/libimobiledevice_new.nix {
