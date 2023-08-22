@@ -1,4 +1,4 @@
-{ pkgs ? (if (import <nixpkgs>).system == "armv7l-linux" then ( import
+{ pkgs ? (if (import <nixpkgs>).system == "armv7l-linux" then (
 builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   # Descriptive name to make the store path easier to identify
   name = "nixos-unstable-2023-07-31";
@@ -7,7 +7,8 @@ builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   # Hash obtained using `nix-prefetch-url --unpack <url>`
   sha256 = "1iqc7rvrwbjg3wps9zzngvb9r47akzx8c39644xbhi1sxqf5rwrk";
 }
-) else (import builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
+) else (
+builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   # Descriptive name to make the store path easier to identify
   name = "nixos-unstable-2020-09-03";
   # Commit hash for nixos-unstable as of the date above
