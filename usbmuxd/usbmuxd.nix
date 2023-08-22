@@ -26,7 +26,7 @@ stdenv.mkDerivation rec {
   ];
 
   propagatedBuildInputs = [
-    libimobiledevice
+    #libimobiledevice
     #libusb1
   ];
 
