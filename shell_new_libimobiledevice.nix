@@ -9,16 +9,14 @@
   # Apply overlay (for raspberry pi to work)
   overlays = [
     (self: super: {
-      libxcrypt = self.libxcrypt.overrideAttrs (oldAttrs: rec {
+      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override {
         #doCheck = false;
-        #patchPhase = ''
-        #prePatch = ''
         patchPhase = ''
           echo "@@@@@@ in overlay"
           #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
           substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
         '';
-      });
+      })) else super.libxcrypt;
     })
   ];
 }}:
