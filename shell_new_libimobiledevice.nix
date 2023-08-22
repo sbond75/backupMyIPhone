@@ -12,7 +12,8 @@
       libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
         #doCheck = false;
         patchPhase = ''
-          substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
+          #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
+          substituteInPlace test/alg-yescrypt.c "return 77; /* UNSUPPORTED */" "return 0;"
         '';
       })) else super.libxcrypt;
     })
