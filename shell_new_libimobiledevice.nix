@@ -5,12 +5,12 @@
   url = "https://github.com/NixOS/nixpkgs/archive/702d1834218e483ab630a3414a47f3a537f94182.tar.gz";
   # Hash obtained using `nix-prefetch-url --unpack <url>`
   sha256 = "1vs08avqidij5mznb475k5qb74dkjvnsd745aix27qcw55rm0pwb";
-}) {} }:
+})}:
 #with pkgs;
 
 # Apply overlay (for raspberry pi to work)
 let myOverlay = (self: super: {
-      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
+      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override (oldAttrs: rec {
         #doCheck = false;
         patchPhase = ''
           echo "@@@@@@ in overlay"
