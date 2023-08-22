@@ -1,4 +1,4 @@
-{ pkgs ? (if system == "armv7l-linux" then ( import
+{ pkgs ? (if builtins.system == "armv7l-linux" then ( import
 builtins.fetchTarball { # https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs :
   # Descriptive name to make the store path easier to identify
   name = "nixos-unstable-2023-07-31";
