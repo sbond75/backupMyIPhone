@@ -15,13 +15,13 @@ mkShell {
     #   #enablePython=true; # doesn't work
     # })
     usbmuxd
-    pkg-config
+    # pkg-config
 
-    python3
-    util-linux
-    lsof
-    (callPackage ./btrbk.nix {})
-    procps
-    which
+    # python3
+    # util-linux
+    # lsof
+    # (callPackage ./btrbk.nix {})
+    # procps
+    # which
   ];
 }
