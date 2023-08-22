@@ -19,7 +19,7 @@ let myOverlay = (self: super: {
       #   '';
       # })) else super.libxcrypt;
 
-      libxcrypt = (callPackage ./libxcrypt/libxcrypt.nix {});
+      libxcrypt = (super.callPackage ./libxcrypt/libxcrypt.nix {});
     });
   nixpkgs = import pkgs {};
   finalPkgs = import pkgs {
