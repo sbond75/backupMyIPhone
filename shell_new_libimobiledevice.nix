@@ -11,7 +11,8 @@
     (self: super: {
       libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
         #doCheck = false;
-        patchPhase = ''
+        #patchPhase = ''
+        prePatch = ''
           echo "@@@@@@ in overlay"
           #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
           substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
