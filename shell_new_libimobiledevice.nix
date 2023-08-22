@@ -12,7 +12,7 @@ let
 libimobiledevice = (callPackage ./libimobiledevice/libimobiledevice_new.nix {
   enablePython=false;
   #enablePython=true; # doesn't work
-})
+});
 in
 mkShell {
   buildInputs = [
