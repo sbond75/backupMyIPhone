@@ -10,7 +10,7 @@
 
 # Apply overlay (for raspberry pi to work)
 let myOverlay = (self: super: {
-      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override (oldAttrs: rec {
+      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.overrideAttrs (oldAttrs: rec {
         #doCheck = false;
         patchPhase = ''
           echo "@@@@@@ in overlay"
