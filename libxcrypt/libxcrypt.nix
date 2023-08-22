@@ -1,4 +1,4 @@
-# From https://github.com/NixOS/nixpkgs/blob/nixos-23.05/pkgs/development/libraries/libxcrypt/default.nix#L61 commit https://github.com/NixOS/nixpkgs/commit/4084875660f235974266232bf4b69e8940b2e405
+# From https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/libraries/libxcrypt/default.nix commit https://github.com/NixOS/nixpkgs/commit/82a0774af60d88d2331911323eacc85b3662380f
 
 { lib, stdenv, fetchurl, perl
 # Update the enabled crypt scheme ids in passthru when the enabled hashes change
@@ -10,11 +10,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "libxcrypt";
-  version = "4.4.33";
+  version = "4.4.36";
 
   src = fetchurl {
     url = "https://github.com/besser82/libxcrypt/releases/download/v${finalAttrs.version}/libxcrypt-${finalAttrs.version}.tar.xz";
-    hash = "sha256-6HrPnGUsVzpHE9VYIVn5jzBdVu1fdUzmT1fUGU1rOm8=";
+    hash = "sha256-5eH0yu4KAd4q7ibjE4gH1tPKK45nKHlm0f79ZeH9iUM=";
   };
 
   outputs = [
@@ -26,7 +26,7 @@ stdenv.mkDerivation (finalAttrs: {
     "--enable-hashes=${enableHashes}"
     "--enable-obsolete-api=glibc"
     "--disable-failure-tokens"
-  ] ++ lib.optionals (stdenv.hostPlatform.isMusl || stdenv.hostPlatform.libc == "bionic") [
+    # required for musl, android, march=native
     "--disable-werror"
   ];
 
@@ -48,7 +48,7 @@ stdenv.mkDerivation (finalAttrs: {
       '';
     };
     enabledCryptSchemeIds = [
-      # https://github.com/besser82/libxcrypt/blob/v4.4.33/lib/hashes.conf
+      # https://github.com/besser82/libxcrypt/blob/v4.4.35/lib/hashes.conf
       "y"   # yescrypt
       "gy"  # gost_yescrypt
       "7"   # scrypt
@@ -60,6 +60,7 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   meta = with lib; {
+    changelog = "https://github.com/besser82/libxcrypt/blob/v${finalAttrs.version}/NEWS";
     description = "Extended crypt library for descrypt, md5crypt, bcrypt, and others";
     homepage = "https://github.com/besser82/libxcrypt/";
     platforms = platforms.all;
