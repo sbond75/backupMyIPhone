@@ -20,9 +20,9 @@ mkShell {
     #   enablePython=false;
     #   #enablePython=true; # doesn't work
     # })
-    #usbmuxd
+    usbmuxd
     #(callPackage ./usbmuxd/usbmuxd.nix {libimobiledevice=libimobiledevice;})
-    # pkg-config
+    pkg-config
 
     # python3
     # util-linux
