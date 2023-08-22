@@ -10,16 +10,16 @@
 
 # Apply overlay (for raspberry pi to work)
 let myOverlay = (self: super: {
-      # libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override (oldAttrs: rec {
-      #   #doCheck = false;
-      #   patchPhase = ''
-      #     echo "@@@@@@ in overlay"
-      #     #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
-      #     substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
-      #   '';
-      # })) else super.libxcrypt;
+      libxcrypt = if super.system == "armv7l-linux" then (super.libxcrypt.override (oldAttrs: rec {
+        #doCheck = false;
+        patchPhase = ''
+          echo "@@@@@@ in overlay"
+          #substituteInPlace Makefile.am "test/alg-yescrypt \\" ""
+          substituteInPlace test/alg-yescrypt.c "return retval;" "return 0;"
+        '';
+      })) else super.libxcrypt;
 
-      libxcrypt = (self.pkgs.callPackage ./libxcrypt/libxcrypt.nix {version="4.4.36";});
+      #libxcrypt = (self.pkgs.callPackage ./libxcrypt/libxcrypt.nix {version="4.4.36";});
     });
   nixpkgs = import pkgs {};
   finalPkgs = import pkgs {
