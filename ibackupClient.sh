@@ -4,7 +4,7 @@
 # NOTE: For setup, run these commands on the client (assumed to be a Raspberry Pi):
 # (Set up SSH as needed, wpa_supplicant, etc.)
 # sudo apt update && sudo apt upgrade
-# sh <(curl -L https://nixos.org/nix/install) --daemon  # Installs nix
+# # Nvm: sh <(curl -L https://nixos.org/nix/install) --daemon  # Installs nix
 # git clone --recursive https://github.com/sbond75/backupMyIPhone
 # Nvm: {
 # sudo apt-get install smbclient
@@ -14,6 +14,8 @@
 # sudo apt-get install curlftpfs
 # # Transfer the certificate from server into whatever you put in config.sh for `config__certPath`, then test out your connection using this command, replacing `usernameHere_ftp` with the FTP username (run `source config.sh` first):
 # lftp -d -u usernameHere_ftp -e 'set ftp:ssl-force true' -e 'set ssl:ca-file '"$config__certPath ; set ssl:check-hostname false;" $config__host  # FTP test command
+# # Compile libimobiledevice (Nix doesn't seem to work on armv7l as of writing) :
+# bash compile_libimobiledevice_imperatively.sh
 
 if [ "$(whoami)" != "pi" ]; then
     echo 'This script must be run as the `pi` user. Exiting.'
