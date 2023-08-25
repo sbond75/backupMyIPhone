@@ -52,9 +52,9 @@ fi
 
 if [ -z "$(getent group usbmux || true)" ]; then # Add if needed:
     # Add usbmux group
-    groupadd -g 140 usbmux
+    sudo groupadd -g 140 usbmux
     # Add usbmux user
-    useradd -c 'usbmux user' -u 140 -g usbmux -d / -s /sbin/nologin usbmux
+    sudo useradd -c 'usbmux user' -u 140 -g usbmux -d / -s /sbin/nologin usbmux
     # Make usbmux user have a locked password (can't be changed by the user)
     passwd -l usbmux
 fi
