@@ -56,7 +56,7 @@ if [ -z "$(getent group usbmux || true)" ]; then # Add if needed:
     # Add usbmux user
     sudo useradd -c 'usbmux user' -u 140 -g usbmux -d / -s /sbin/nologin usbmux
     # Make usbmux user have a locked password (can't be changed by the user)
-    passwd -l usbmux
+    sudo passwd -l usbmux
 fi
 
 if [ -z "$(grep -F "/usr/local/lib" /etc/ld.so.conf.d/libimobiledevice-libs.conf || true)" ]; then # Add if needed:
