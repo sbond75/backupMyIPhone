@@ -11,7 +11,8 @@ if [ ! -e iphone_libs ]; then
     # https://github.com/libimobiledevice/libimobiledevice
     sudo apt-get -y install \
 	 doxygen \
-	 cython
+	 cython \
+	 libssl-dev # Added to fix `error: OpenSSL support explicitly requested but OpenSSL could not be found`
 
     mkdir iphone_libs && cd iphone_libs
 
@@ -39,9 +40,15 @@ fi
 if [ ! -e /usr/local/lib/libusbmuxd-2.0.a ]; then
     cd libusbmuxd && ./autogen.sh && make && sudo make install && cd ..
 fi
-cd libimobiledevice && ./autogen.sh && make && sudo make install && cd ..
-cd usbmuxd && ./autogen.sh && make && sudo make install && cd ..
-cd ifuse && ./autogen.sh && make && sudo make install && cd ..
+if [ ! -e /usr/local/bin/idevicebackup2 ]; then
+    cd libimobiledevice && ./autogen.sh && make && sudo make install && cd ..
+fi
+if [ ! -e /usr/local/sbin/usbmuxd ]; then
+    cd usbmuxd && ./autogen.sh && make && sudo make install && cd ..
+fi
+if [ ! -e /usr/local/bin/ifuse ]; then
+    cd ifuse && ./autogen.sh && make && sudo make install && cd ..
+fi
 
 if [ -z "$(getent group usbmux || true)" ]; then # Add if needed:
     # Add usbmux group
