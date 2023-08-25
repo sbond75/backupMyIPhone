@@ -61,5 +61,7 @@ fi
 
 if [ -z "$(grep -F "/usr/local/lib" /etc/ld.so.conf.d/libimobiledevice-libs.conf || true)" ]; then # Add if needed:
     echo /usr/local/lib | sudo tee /etc/ld.so.conf.d/libimobiledevice-libs.conf
-    sudo ldconfig
 fi
+
+# https://github.com/libimobiledevice/libimobiledevice/issues/1002 -- fixes "libimobiledevice-1.0.so.6: cannot open shared object file: No such file or directory" (when running something like `ideviceinfo`):
+sudo ldconfig
