@@ -16,6 +16,8 @@ if [ ! -e iphone_libs ]; then
     git clone https://github.com/libimobiledevice/libimobiledevice.git
     git clone https://github.com/libimobiledevice/ifuse.git
     git clone https://github.com/libimobiledevice/libimobiledevice-glue.git
+else
+    cd iphone_libs
 fi
 
 if [ -z "$(grep -F "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" /etc/bash.bashrc || true)" ]; then # Add if needed:
