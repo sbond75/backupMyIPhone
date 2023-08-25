@@ -1,12 +1,17 @@
 # This file is part of instructions in ibackupClient.sh and is intended to be run on a Raspberry Pi.
 # Based on https://gist.github.com/kfatehi/8922430
 
-set -e
+set -ex
 
 if [ ! -e iphone_libs ]; then
     sudo apt-get update
     sudo apt-get -y upgrade
     sudo apt-get -y install vim tmux git build-essential libxml2-dev python2.7 python2.7-dev fuse libtool autoconf libusb-1.0-0-dev libfuse-dev
+
+    # https://github.com/libimobiledevice/libimobiledevice
+    sudo apt-get -y install \
+	 doxygen \
+	 cython
 
     mkdir iphone_libs && cd iphone_libs
 
@@ -28,9 +33,12 @@ fi
 if [ ! -e /usr/local/lib/libplist-2.0.a ]; then
     cd libplist && ./autogen.sh && make && sudo make install && cd ..
 fi
-cd libimobiledevice-glue && ./autogen.sh && make && sudo make install && cd ..
-exit
-cd libusbmuxd && ./autogen.sh && make && sudo make install && cd ..
+if [ ! -e /usr/local/lib/libimobiledevice-glue-1.0.a ]; then
+    cd libimobiledevice-glue && ./autogen.sh && make && sudo make install && cd ..
+fi
+if [ ! -e /usr/local/lib/libusbmuxd-2.0.a ]; then
+    cd libusbmuxd && ./autogen.sh && make && sudo make install && cd ..
+fi
 cd libimobiledevice && ./autogen.sh && make && sudo make install && cd ..
 cd usbmuxd && ./autogen.sh && make && sudo make install && cd ..
 cd ifuse && ./autogen.sh && make && sudo make install && cd ..
