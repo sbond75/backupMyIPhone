@@ -71,6 +71,7 @@ function serverCmd() {
 
 # Make an array for all the devices' backup statuses (whether they were backed up today or not) per UDID
 wasBackedUp=()
+wasBackedUp_times=() # time strings for last backup, or "" for no backup at all yet
 # Nvm: this is for users, not UDIDs: #
 # source "$scriptDir/allConfiguredFTPUsers.sh" # Puts users into `users` array
 # for i in "${users[@]}"
@@ -119,8 +120,12 @@ readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-del
 for i in "${udidTableKeysArray[@]}"
 do
     wasBackedUp+=(0) # 0 for false
+    wasBackedUp_times+=("")
 done
 
+# Outputs #
+wasBackedUp__timeTillNextBackup=
+# #
 function wasBackedUp_() {
     local udid="$1"
     local index = 0
@@ -128,7 +133,24 @@ function wasBackedUp_() {
     do
 	if [ "$i" == "$udid" ]; then
 	    # Found it
-	    echo "${wasBackedUp[index]}"
+	    res="${wasBackedUp[index]}"
+	    if [ "$res" == "1" ]; then
+		# Check if this is too old
+		local now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+		local past="${wasBackedUp_times[index]}"
+		local inc=$((86400 / 2)) # Seconds in a day divided by 2
+		local next=$(($past + $inc))
+		wasBackedUp__timeTillNextBackup=$(($next - $now))
+		if [ "$now" -ge "$next" ]; then
+		    echo "0" # always make this "too old" of a backup, so we report "0" to mean "not backed up"
+		else
+		    echo "$res" # keep original status
+		fi
+	    else
+		wasBackedUp__timeTillNextBackup=0
+		# "Return" it
+		echo "$res"
+	    fi
 	    return
 	fi
 	let index=${index}+1 # (`let` is for arithmetic -- https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value , https://stackoverflow.com/questions/18704857/bash-let-statement-vs-assignment )
@@ -146,6 +168,10 @@ function setWasBackedUp_() {
 	if [ "$i" == "$udid" ]; then
 	    # Found it
 	    wasBackedUp[index]="$setTo"
+
+	    local now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+	    wasBackedUp_times[index]="$now"
+
 	    echo 1 # success
 	    return
 	fi
@@ -195,9 +221,13 @@ END_HEREDOC
 		echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
 		continue
 	    elif [ "$didBackup" == "1" ]; then
-		echo "[ibackupClient] Already backed up device ${udid} today. Skipping it."
+		local till="$(python3 -c "from sys import argv; print(float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours
+		echo "[ibackupClient] Already backed up device ${udid} today (next backup is in at least $till hour(s)). Not backing up now."
 		continue
-	    fi # else: assume it is "0" meaning not backed up yet
+	    else # Assume it is "0" meaning not backed up yet
+		local since="$(python3 -c "from sys import argv; print(-float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours (and negate the input seconds)
+		echo "[ibackupClient] Preparing to back up device ${udid} now (last backup was $since hour(s) ago)."
+	    fi
 
 	    # Mount fuse filesystem for server's vsftpd to use
 	    local username="${userFolderName}"'_ftp'

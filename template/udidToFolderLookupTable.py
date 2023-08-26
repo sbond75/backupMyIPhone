@@ -12,5 +12,19 @@ lookupTable={
     "00008020-008D4548007B4F28": someUser2,
 }
 
+def removeDashes_(s):
+    return s.replace('-', '')
+
 if __name__ == '__main__':
-    print(lookupTable[argv[1]])
+    toGet = argv[1]
+    removeDashes = (argv[2] == '1') if len(argv) > 2 else False
+    printTableKeys = (argv[3] == '1') if len(argv) > 3 else False
+    if removeDashes:
+        toGet = removeDashes_(toGet)
+        lookupTable = {removeDashes_(k): v for k,v in lookupTable.items()}
+
+    if printTableKeys:
+        for k in lookupTable.keys():
+            print(k)
+    else:
+        print(lookupTable[toGet])
