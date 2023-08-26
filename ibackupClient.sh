@@ -24,7 +24,8 @@ if [ "$(whoami)" != "pi" ]; then
     exit 1
 fi
 
-set -ex
+set -e
+#set -ex
 
 # Sync network time for the raspberry pi (you may also need to set the timezone, such as by running `timedatectl set-timezone yourTimeZoneHere` (for a list of timezones, use `timedatectl list-timezones`)).
 timedatectl
@@ -190,7 +191,7 @@ function parseOutput () {
     # https://stackoverflow.com/questions/1167746/how-to-assign-a-heredoc-value-to-a-variable-in-bash : "Making sure to delimit starting END_HEREDOC with single-quotes. This will prevent the content of the heredoc from being expanded, so dont-execute-this [something like `$(dont-execute-this)` within the heredoc contents] will not be executed."
     local regex=$(
 cat <<'END_HEREDOC'
-^Got serial '([^\']*)' for device .*$
+^(\[[0-9]*:[0-9]*:[0-9]*\.[0-9]*\]\[[0-9]*\] )?Got serial '([^\']*)' for device .*$
 END_HEREDOC
 )
 
@@ -202,7 +203,7 @@ END_HEREDOC
 	#if [ ! -z "$(grep -E "$regex")" ]; then
 	if [[ $data =~ $regex ]]; then
 	    # matched
-            local udid="${BASH_REMATCH[1]}" # Get first capture group in the regex ( https://stackoverflow.com/questions/1891797/capturing-groups-from-a-grep-regex )
+            local udid="${BASH_REMATCH[2]}" # Get second capture group in the regex ( https://stackoverflow.com/questions/1891797/capturing-groups-from-a-grep-regex )
 	    echo "[ibackupClient] Device found: $udid"
 	    # Print device info for reference:
 	    ideviceinfo --udid "$udid"
