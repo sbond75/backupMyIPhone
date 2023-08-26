@@ -57,6 +57,8 @@
 
 
 
+set -e
+
 ranWithTeeAlready="$1" # Internal use, leave empty
 
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"

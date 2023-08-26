@@ -24,6 +24,8 @@ if [ "$(whoami)" != "pi" ]; then
     exit 1
 fi
 
+set -e
+
 # Sync network time for the raspberry pi (you may also need to set the timezone, such as by running `timedatectl set-timezone yourTimeZoneHere` (for a list of timezones, use `timedatectl list-timezones`)).
 timedatectl
 
@@ -67,20 +69,64 @@ function serverCmd() {
     netcat "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
-# Make an array for all the devices' backup statuses (whether they were backed up today or not)
+# Make an array for all the devices' backup statuses (whether they were backed up today or not) per UDID
 wasBackedUp=()
-source "$scriptDir/allConfiguredFTPUsers.sh" # Puts users into `users` array
-for i in "${users[@]}"
+# Nvm: this is for users, not UDIDs: #
+# source "$scriptDir/allConfiguredFTPUsers.sh" # Puts users into `users` array
+# for i in "${users[@]}"
+# do
+#     wasBackedUp+=(0) # 0 for false
+# done
+
+# function wasBackedUp_() {
+#     local usernameWithFTPSuffix="$1"
+#     local index = 0
+#     for i in "${users[@]}"
+#     do
+# 	if [ "$i" == "$usernameWithFTPSuffix" ]; then
+# 	    # Found it
+# 	    echo "${wasBackedUp[index]}"
+# 	    return
+# 	fi
+# 	let index=${index}+1 # (`let` is for arithmetic -- https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value , https://stackoverflow.com/questions/18704857/bash-let-statement-vs-assignment )
+#     done
+#     # If we get here, it wasn't found... return "2" instead
+#     echo 2
+# }
+
+# function setWasBackedUp_() {
+#     local usernameWithFTPSuffix="$1"
+#     local setTo="$2"
+#     local index = 0
+#     for i in "${users[@]}"
+#     do
+# 	if [ "$i" == "$usernameWithFTPSuffix" ]; then
+# 	    # Found it
+# 	    wasBackedUp[index]="$setTo"
+# 	    echo 1 # success
+# 	    return
+# 	fi
+# 	let index=${index}+1 # (`let` is for arithmetic -- https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value , https://stackoverflow.com/questions/18704857/bash-let-statement-vs-assignment )
+#     done
+#     # If we get here, it wasn't found... return "2" instead
+#     echo 2
+# }
+# End nvm #
+# Actual stuff: #
+local udidTableKeys=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo" 1 1)
+readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-delimited array of strings} out of a string and into an array. `-t` to strip newlines. ( https://www.javatpoint.com/bash-split-string#:~:text=In%20bash%2C%20a%20string%20can,the%20string%20in%20split%20form. , https://stackoverflow.com/questions/41721847/readarray-t-option-in-bash-default-behavior )
+
+for i in "${udidTableKeysArray[@]}"
 do
     wasBackedUp+=(0) # 0 for false
 done
 
 function wasBackedUp_() {
-    local usernameWithFTPSuffix="$1"
+    local udid="$1"
     local index = 0
-    for i in "${users[@]}"
+    for i in "${udidTableKeysArray[@]}"
     do
-	if [ "$i" == "$usernameWithFTPSuffix" ]; then
+	if [ "$i" == "$udid" ]; then
 	    # Found it
 	    echo "${wasBackedUp[index]}"
 	    return
@@ -92,12 +138,12 @@ function wasBackedUp_() {
 }
 
 function setWasBackedUp_() {
-    local usernameWithFTPSuffix="$1"
+    local udid="$1"
     local setTo="$2"
     local index = 0
-    for i in "${users[@]}"
+    for i in "${udidTableKeysArray[@]}"
     do
-	if [ "$i" == "$usernameWithFTPSuffix" ]; then
+	if [ "$i" == "$udid" ]; then
 	    # Found it
 	    wasBackedUp[index]="$setTo"
 	    echo 1 # success
@@ -108,6 +154,7 @@ function setWasBackedUp_() {
     # If we get here, it wasn't found... return "2" instead
     echo 2
 }
+# #
 
 # Run usbmuxd and wait for devices to connect. When they do, identify them as one of the users in udidToFolderLookupTable.py and then check if a backup has been made today. If a backup hasn't been made, start the backup. #
 
@@ -124,6 +171,7 @@ END_HEREDOC
     while read data; do
 	echo "${data}"
 
+	set +e
 	# Check if `data` indicates that an iOS device was plugged in:
 	#if [ ! -z "$(grep -E "$regex")" ]; then
 	if [[ $data =~ $regex ]]; then
@@ -134,7 +182,7 @@ END_HEREDOC
 	    ideviceinfo --udid "$udid"
 	    # Compare udid to lookup table ignoring dashes
 	    local userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo" 1)
-	    echo "[ibackup] User folder name: $userFolderName"
+	    echo "[ibackupClient] User folder name: $userFolderName"
 	    if [ -z "$userFolderName" ]; then
 		echo "Empty name (possibly not found), not able to interface with this device."
 		continue
@@ -142,6 +190,14 @@ END_HEREDOC
 	    # Now we know which user this backup should go under.
 
 	    # Check if the device was backed up already
+	    local didBackup=$(wasBackedUp_ "$udid")
+	    if [ "$didBackup" == "2" ]; then
+		echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
+		continue
+	    elif [ "$didBackup" == "1" ]; then
+		echo "[ibackupClient] Already backed up device ${udid} today. Skipping it."
+		continue
+	    fi # else: assume it is "0" meaning not backed up yet
 
 	    # Mount fuse filesystem for server's vsftpd to use
 	    local username="${userFolderName}"'_ftp'
@@ -150,20 +206,36 @@ END_HEREDOC
 	    if [ ! -e "$mountPoint" ]; then
 		mkdir "$mountPoint"
 	    fi
+	    echo "[ibackupClient] Mounting FTP filesystem..."
 	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "ftp://$username:$password@$config__host" "$mountPoint"
+	    echo "[ibackupClient] Mounted FTP filesystem."
 
 	    # Prepare the server for backup:
+	    echo "[ibackupClient] Preparing server for backup..."
 	    serverCmd "startBackup"
+	    echo "[ibackupClient] Prepared server for backup."
 
 	    # Perform the backup:
+	    echo "[ibackupClient] Starting backup."
 	    idevicebackup2 --udid "$udid" "$dest"
+	    local exitCode="$?"
+	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
 
 	    # Tell the server we are done backing up:
+	    echo "[ibackupClient] Telling server backup is done..."
 	    serverCmd "finishBackup"
+	    echo "[ibackupClient] Told server backup is done."
 
 	    # Unmount that user
+	    echo "[ibackupClient] Unmounting FTP filesystem..."
 	    fusermount -u "$mountPoint"
+	    echo "[ibackupClient] Unmounted FTP filesystem."
+
+	    # Save backup success status
+	    echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
 	fi
+
+	set -e
     done
 }
 
