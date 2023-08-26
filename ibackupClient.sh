@@ -92,6 +92,11 @@ function serverCmd() {
     fi
 }
 
+function urlencode() {
+    # https://askubuntu.com/questions/53770/how-can-i-encode-and-decode-percent-encoded-strings-on-the-command-line , https://stackoverflow.com/questions/40557606/how-to-url-encode-in-python-3
+    python3 -c "import urllib.parse; import sys; print(urllib.parse.quote(  sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()[0:-1], safe=''))" "$1"
+}
+
 # Make an array for all the devices' backup statuses (whether they were backed up today or not) per UDID
 wasBackedUp=()
 wasBackedUp_times=() # time strings for last backup, or "" for no backup at all yet
@@ -296,7 +301,8 @@ END_HEREDOC
 		mkdir "$mountPoint"
 	    fi
 	    echo "[ibackupClient] Mounting FTP filesystem..."
-	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" # FIXME: if password has commas it will probably break this `user=` stuff
+	    export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
+	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname,user=$username:$(urlencode "$password")" "$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
 	    local exitCode="$?"
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
