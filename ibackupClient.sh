@@ -302,7 +302,7 @@ END_HEREDOC
 	    fi
 	    echo "[ibackupClient] Mounting FTP filesystem..."
 	    export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
-	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname,user=$username:$(urlencode "$password")" "$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
+	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
 	    local exitCode="$?"
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
