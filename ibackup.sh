@@ -411,7 +411,7 @@ else
         #try=0
 
 	# "UDID -> folder name" lookup (config file essentially)
-	userFolderName=$(python3 ./udidToFolderLookupTable.py "$deviceToConnectTo")
+	userFolderName=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$deviceToConnectTo")
 	echo "[ibackup] User folder name: $userFolderName"
 	if [ -z "$userFolderName" ]; then
 	    echo "Empty name, exiting"

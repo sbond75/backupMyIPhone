@@ -140,7 +140,7 @@ setVars() {
     local udid="$1"
 
     # Get the FTP user account for this udid
-    username="$(python3 ./udidToFolderLookupTable.py "$udid")"
+    username="$(python3 "$scriptDir/udidToFolderLookupTable.py" "$udid")"
     username_ftp="${username}_ftp" # Append `_ftp` to it to make the FTP username
 
     dest="$config__drive/home/$username/@iosBackups"
