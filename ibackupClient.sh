@@ -31,6 +31,7 @@ set -e
 timedatectl
 
 ranWithTeeAlready="$1" # Internal use, leave empty
+firstTime="$2" # Set to 1 to enable backup encryption interactively
 
 # Script setup #
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
@@ -129,7 +130,7 @@ wasBackedUp__timeTillNextBackup=
 # #
 function wasBackedUp_() {
     local udid="$1"
-    local index = 0
+    local index=0
     for i in "${udidTableKeysArray[@]}"
     do
 	if [ "$i" == "$udid" ]; then
@@ -205,6 +206,8 @@ END_HEREDOC
 	    # matched
             local udid="${BASH_REMATCH[2]}" # Get second capture group in the regex ( https://stackoverflow.com/questions/1891797/capturing-groups-from-a-grep-regex )
 	    echo "[ibackupClient] Device found: $udid"
+	    # Add dash at the 8th position of the udid string ( https://www.unix.com/shell-programming-and-scripting/149658-insert-character-particular-position.html )
+	    udid="$(echo "$udid" | sed 's/./&-/8')"
 	    # Print device info for reference:
 	    ideviceinfo --udid "$udid"
 	    # Compare udid to lookup table ignoring dashes
@@ -229,6 +232,7 @@ END_HEREDOC
 		local since="$(python3 -c "from sys import argv; print(-float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours (and negate the input seconds)
 		echo "[ibackupClient] Preparing to back up device ${udid} now (last backup was $since hour(s) ago)."
 	    fi
+	    local deviceToConnectTo="$udid"
 
 	    # Mount fuse filesystem for server's vsftpd to use
 	    local username="${userFolderName}"'_ftp'
@@ -246,9 +250,23 @@ END_HEREDOC
 	    serverCmd "startBackup"
 	    echo "[ibackupClient] Prepared server for backup."
 
+	    if [ "$firstTime" == "1" ]; then
+		# Enable encryption
+		idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
+		# Optional (if a password wasn't set)
+		read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
+		if [[ ! $REPLY =~ ^[Yy]$ ]]
+		then
+		    idevicebackup2 --udid "$deviceToConnectTo" -i changepw
+		else
+		    :
+		fi
+		firstTime=0 # Already enabled from now on
+	    fi
+
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
-	    idevicebackup2 --udid "$udid" "$dest"
+	    idevicebackup2 --udid "$deviceToConnectTo" backup "$dest"
 	    local exitCode="$?"
 	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
 
