@@ -113,7 +113,7 @@ wasBackedUp=()
 # }
 # End nvm #
 # Actual stuff: #
-local udidTableKeys=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$deviceToConnectTo" 1 1)
+udidTableKeys=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$deviceToConnectTo" 1 1)
 readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-delimited array of strings} out of a string and into an array. `-t` to strip newlines. ( https://www.javatpoint.com/bash-split-string#:~:text=In%20bash%2C%20a%20string%20can,the%20string%20in%20split%20form. , https://stackoverflow.com/questions/41721847/readarray-t-option-in-bash-default-behavior )
 
 for i in "${udidTableKeysArray[@]}"
@@ -233,6 +233,11 @@ END_HEREDOC
 
 	    # Save backup success status
 	    echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
+	    local found=$(setWasBackedUp_ "$udid" 1)
+	    if [ "$found" == "2" ]; then
+		# Not found, error
+		echo "[ibackupClient] Couldn't mark UDID $udid as completed. Ignoring error..."
+	    fi
 	fi
 
 	set -e
