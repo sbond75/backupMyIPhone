@@ -116,7 +116,7 @@ wasBackedUp_times=() # time strings for last backup, or "" for no backup at all 
 # }
 # End nvm #
 # Actual stuff: #
-udidTableKeys=$(python3 "$scriptDir/udidToFolderLookupTable.py" "" 1 1)
+udidTableKeys=$(python3 "$scriptDir/udidToFolderLookupTable.py" "" 0 1)
 readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-delimited array of strings} out of a string and into an array. `-t` to strip newlines. ( https://www.javatpoint.com/bash-split-string#:~:text=In%20bash%2C%20a%20string%20can,the%20string%20in%20split%20form. , https://stackoverflow.com/questions/41721847/readarray-t-option-in-bash-default-behavior )
 
 for i in "${udidTableKeysArray[@]}"
