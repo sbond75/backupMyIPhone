@@ -24,6 +24,9 @@ if [ "$(whoami)" != "pi" ]; then
     exit 1
 fi
 
+# Sync network time for the raspberry pi (you may also need to set the timezone, such as by running `timedatectl set-timezone yourTimeZoneHere` (for a list of timezones, use `timedatectl list-timezones`)).
+timedatectl
+
 ranWithTeeAlready="$1" # Internal use, leave empty
 
 # Script setup #
