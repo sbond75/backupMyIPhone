@@ -14,6 +14,8 @@ config__clientDirectory=/home/pi/Projects/backupMyIPhone_clientDirectory
 config__certPath=/home/pi/Projects/server_ftp.cert
 # For remote backups: server IP address or hostname
 config__host=192.168.1.x
+# For remote backups: port to use for commands received in ibackupServer.sh and sent from ibackupClient.sh related to preparing for and finishing with a backup. This port must be open on the NixOS firewall for the server machine (the machine at IP address $config__host).
+config__serverCommands_port=8090
 
 # For remote backups, a Linux user account like userNameHere (which is usually something followed by the `_iosbackup` suffix) gotten from udidToFolderLookupTable.py will get the suffix `_ftp` added (i.e. it becomes `userNameHere_ftp`) as the username for FTP login. The password will be gotten from one of the below which are of the form `config__usernameForFTP=passwordForFTPHere`:
 config__userNameHere_iosbackup_ftp='passwordForFTPHere'

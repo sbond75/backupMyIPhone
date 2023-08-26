@@ -52,7 +52,7 @@
 
 #   # For custom ibackupServer.sh script
 #   8090
-# } -- end of ports configuration
+# } -- end of ports configuration. Replace port "8090" with the evaluation of "$config__serverCommands_port" from your config.
 # END SETUP ######################################################################################
 
 
@@ -112,23 +112,7 @@ if [ "$username_script" != "$moi" ]; then
     exit
 fi
 
-# Get all configured users into `vars`
-prefix=config__
-suffix=_ftp
-# https://unix.stackexchange.com/questions/245989/list-variables-with-prefix-where-the-prefix-is-stored-in-another-variable
-eval 'vars=(${!'"$prefix"'@})' # Filter {all bash variables defined currently} by prefix first
-# Now filter by suffix, saving the final result into `users` array
-users=()
-for i in "${vars[@]}"
-do
-    if [[ $i == *$suffix ]]; then
-	#echo "String ends with given suffix."
-	users+=("$i")
-    else
-	#echo "String does not end with given suffix."
-	:
-    fi
-done
+#source "$scriptDir/allConfiguredFTPUsers.sh" # Puts users into `users` array
 
 logfile="$dest_script/ibackupServer_logs/$(date '+%Y-%m-%d %I-%M-%S %p').log.txt"
 logsDir="$(dirname "$logfile")"
@@ -149,7 +133,7 @@ username=
 username_ftp=
 dest=
 # Input: $1 = udid to use
-# Outputs to global vars above
+# Outputs to global variables above
 setVars() {
     local udid="$1"
 
@@ -212,10 +196,12 @@ runCommand() {
     local command="$1"
     local arg0="$(echo "$command" | awk '{ print $1 }')"
     local arg1="$(echo "$command" | awk '{ print $2 }')"
-    if [ arg0 == "startBackup" ]; then
+    if [ "$arg0" == "startBackup" ]; then
 	startBackup "$arg1"
-    elif [ arg0 == "finishBackup" ]; then
+    elif [ "$arg0" == "finishBackup" ]; then
 	finishBackup "$arg1"
+    else
+	echo "[ibackupServer] Unknown command: $command"
     fi
 }
 
@@ -231,5 +217,5 @@ commandProcessor() {
 # Read from the pipe first, in the background
 commandProcessor "$tcp_fifo" &
 # Write to the pipe in the foreground
-nc -l -p 8090 > "$tcp_fifo"
+nc -l -p "$config__serverCommands_port" > "$tcp_fifo"
 NC_PID="$!" # get the process ID of the netcat process spawned above
