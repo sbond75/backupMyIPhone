@@ -61,6 +61,7 @@ makeEntry "$username"
 
 5. Setup the server further by running this: `./ibackupServer.sh` (run as any user with `sudo` permissions since `sudo` will be used within the script).
 6. Run this command on the server to start the backup server: `sudo -E su --preserve-environment iosbackup_server ./ibackupServer.sh`
+7. Run this command on the client to start listening for iOS devices to be plugged into usbmuxd on the client via USB: `./ibackupClient.sh` (you will be prompted for sudo to run usbmuxd with)
 
 ## Tools
 

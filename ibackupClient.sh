@@ -1,5 +1,7 @@
-#! /usr/bin/env nix-shell
-#! nix-shell -i bash ./shell_new_libimobiledevice.nix
+#!/usr/bin/env bash
+
+##! /usr/bin/env nix-shell
+##! nix-shell -i bash ./shell_new_libimobiledevice.nix
 
 # NOTE: For setup, run these commands on the client (assumed to be a Raspberry Pi -- tested on `Raspbian GNU/Linux 9.13 (stretch)` (armv7l architecture) on a `Raspberry Pi 3 Model B Rev 1.2`):
 # (Set up SSH as needed, wpa_supplicant, etc.)
