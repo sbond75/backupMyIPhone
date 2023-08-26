@@ -3,6 +3,9 @@
 # Destination drive for the backup. This must be a mountpoint (i.e., `mountpoint` command must return exit code 0 when run with this as an argument) and must be a Btrfs filesystem.
 config__drive=/mnt/someMountPointHere
 
+# Port to use for btrbk_daemon.py. This can usually be left as the default provided here. This port will be open on the local machine only (not for other computers on the same local network to access)
+config__btrbk_daemon_port=8089
+
 # For remote backups, i.e. when run from a client (remotely transmitting a backup made from an iOS device connected to the "client" computer which is sent to a "server" computer running ibackupServer.sh) #
 # For remote backups: destination directory for the backup on the client
 config__clientDirectory=/home/pi/Projects/backupMyIPhone_clientDirectory

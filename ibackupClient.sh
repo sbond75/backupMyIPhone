@@ -47,7 +47,7 @@ fi
 
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
-    echo "[ibackup] Running with tee to logfile $logfile"
+    echo "[ibackupClient] Running with tee to logfile $logfile"
     bash "$0" "1" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
@@ -61,9 +61,8 @@ fi
 # Run usbmuxd and wait for devices to connect. When they do, identify them as one of the users in udidToFolderLookupTable.py and then check if a backup has been made today. If a backup hasn't been made, start the backup. #
 
 # https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
-# Usage: `echo "test" | tee_with_timestamps "file.txt"`
+# Usage: `echo "test" | parseOutput`
 function parseOutput () {
-    local logfile=$1
     while read data; do
 	# Check if `data` indicates that an iOS device was plugged in:
 	
