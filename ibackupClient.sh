@@ -67,8 +67,29 @@ fi
 
 
 
-function serverCmd() {
+function serverCmd_impl() {
     netcat "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
+}
+
+function serverCmd() {
+    local retryTillSuccess="$2"
+
+    if [ "$retryTillSuccess" == "1" ]; then
+	# Keep trying till it succeeds, since this is important:
+	local exitCode=1
+	while [ "$exitCode" != 0 ]; do
+	    serverCmd_impl "$1"
+	    exitCode="$?"
+	    if [ "$exitCode" == "0" ]; then
+		:
+	    else
+		echo "[ibackupClient] Running command $1 on server failed with exit code $exitCode. Retrying in 30 seconds..."
+	    fi
+	    sleep 30
+	done
+    else
+	serverCmd_impl "$1"
+    fi
 }
 
 # Make an array for all the devices' backup statuses (whether they were backed up today or not) per UDID
@@ -195,6 +216,24 @@ function setWasBackedUp_() {
 }
 # #
 
+function unmountUser() {
+    local mountPoint="$1"
+
+    # Keep trying till it succeeds, since this is important:
+    local exitCode=1
+    while [ "$exitCode" != 0 ]; do
+	echo "[ibackupClient] Unmounting FTP filesystem..."
+	fusermount -u "$mountPoint"
+	exitCode="$?"
+	if [ "$exitCode" == "0" ]; then
+	    echo "[ibackupClient] Unmounted FTP filesystem."
+	else
+	    echo "[ibackupClient] Unmounting FTP filesystem failed with exit code $exitCode. Retrying in 30 seconds..."
+	fi
+	sleep 30
+    done
+}
+
 # Run usbmuxd and wait for devices to connect. When they do, identify them as one of the users in udidToFolderLookupTable.py and then check if a backup has been made today. If a backup hasn't been made, start the backup. #
 
 # https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
@@ -219,6 +258,8 @@ END_HEREDOC
 	    echo "[ibackupClient] Device found: $udid"
 	    # Add dash at the 8th position of the udid string ( https://www.unix.com/shell-programming-and-scripting/149658-insert-character-particular-position.html )
 	    udid="$(echo "$udid" | sed 's/./&-/8')"
+	    # Delay to prevent it not being found
+	    sleep 5
 	    # Print device info for reference:
 	    ideviceinfo --udid "$udid"
 	    # Compare udid to lookup table ignoring dashes
@@ -256,26 +297,60 @@ END_HEREDOC
 	    fi
 	    echo "[ibackupClient] Mounting FTP filesystem..."
 	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" # FIXME: if password has commas it will probably break this `user=` stuff
+	    local exitCode="$?"
+	    if [ "$exitCode" != "0" ]; then
+		echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
+		continue
+	    fi
 	    echo "[ibackupClient] Mounted FTP filesystem."
-
-	    # Prepare the server for backup:
-	    echo "[ibackupClient] Preparing server for backup..."
-	    serverCmd "startBackup"
-	    echo "[ibackupClient] Prepared server for backup."
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
 		idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
+		local exitCode="$?"
+		if [ "$exitCode" != "0" ]; then
+		    echo "[ibackupClient] Enabling encryption failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+		    # Unmount that user
+		    unmountUser "$mountPoint"
+
+		    continue
+		fi
 		# Optional (if a password wasn't set)
 		read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
 		if [[ ! $REPLY =~ ^[Yy]$ ]]
 		then
 		    idevicebackup2 --udid "$deviceToConnectTo" -i changepw
+		    local exitCode="$?"
+		    if [ "$exitCode" != "0" ]; then
+			echo "[ibackupClient] Setting backup password failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+			# Unmount that user
+			unmountUser "$mountPoint"
+
+			continue
+		    fi
 		else
 		    :
 		fi
 		firstTime=0 # Already enabled from now on
+
+		set +e
 	    fi
+
+	    # Prepare the server for backup:
+	    echo "[ibackupClient] Preparing server for backup..."
+	    serverCmd "startBackup"
+	    local exitCode="$?"
+	    if [ "$exitCode" != "0" ]; then
+		echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+		# Unmount that user
+		unmountUser "$mountPoint"
+
+		continue
+	    fi
+	    echo "[ibackupClient] Prepared server for backup."
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
@@ -285,13 +360,11 @@ END_HEREDOC
 
 	    # Tell the server we are done backing up:
 	    echo "[ibackupClient] Telling server backup is done..."
-	    serverCmd "finishBackup"
+	    serverCmd "finishBackup" 1
 	    echo "[ibackupClient] Told server backup is done."
 
 	    # Unmount that user
-	    echo "[ibackupClient] Unmounting FTP filesystem..."
-	    fusermount -u "$mountPoint"
-	    echo "[ibackupClient] Unmounted FTP filesystem."
+	    unmountUser "$mountPoint"
 
 	    # Save backup success status
 	    echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
