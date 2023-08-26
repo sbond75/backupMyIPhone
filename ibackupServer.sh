@@ -57,7 +57,7 @@
 
 
 
-set -e
+set -ex
 
 ranWithTeeAlready="$1" # Internal use, leave empty
 
