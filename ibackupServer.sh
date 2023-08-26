@@ -59,17 +59,32 @@
 
 ranWithTeeAlready="$1" # Internal use, leave empty
 
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+tcp_fifo="$scriptDir/tcp_stream"
+
 # Ensure perms are ok on the script
 username_script=iosbackup_server
 moi="$(whoami)"
 if [ "$username_script" != "$moi" ]; then
+    echo "Performing first-time setup"
+
     # Part of first-time setup (so that `iosbackup_server` can execute this script)
     sudo chown :iosbackup "${BASH_SOURCE[0]}"
     sudo chmod g+x "${BASH_SOURCE[0]}"
+
+    # Part of first-time setup -- using ACLs (so that `iosbackup_server` can execute this script) -- this is needed since the directory perms for the script directory (`.`) are: `drwxr-xr--+ 1 yourUserNameHere iosbackup  1174 Aug 26 10:47 .` where `yourUserNameHere` is your username -- and user `iosbackup_server` is not part of the `iosbackup` group so it is part of the "other" permissions which don't have execute permissions on the directory meaning it can't run scripts within the directory. So we add execute permission for the `iosbackup_server` user using access control lists (ACLs):
+    setfacl -m u:iosbackup_server:x "$scriptDir"
+    # Verify for reference:
+    getfacl "$scriptDir"
+
+    # Make a fifo that will persist after this script is run, and allow this script to access it when run later as the `iosbackup_server` user:
+    mkfifo "$tcp_fifo"
+    setfacl -m u:iosbackup_server:rw "$tcp_fifo"
+    # Verify for reference:
+    getfacl "$tcp_fifo"
 fi
 
 # Script setup #
-scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 source "$scriptDir/makeSnapshot.sh" # Sets `makeSnapshot` function
 source "$scriptDir/teeWithTimestamps.sh" # Sets `tee_with_timestamps` function
 
@@ -90,8 +105,11 @@ fi
 # Verify user
 #moi="$(whoami)"
 if [ "$username_script" != "$moi" ]; then
-    echo "Expected \"$username_script\" to equal whoami user \"${moi}\". Exiting."
-    exit 1
+    #echo "Expected \"$username_script\" to equal whoami user \"${moi}\". Exiting."
+    #exit 1
+
+    echo "Finished first-time setup."
+    exit
 fi
 
 # Get all configured users into `vars`
@@ -209,9 +227,9 @@ commandProcessor() {
 }
 
 # Wait for a connection to take a snapshot
-mkfifo tcp_stream
+#mkfifo "$tcp_fifo"
 # Read from the pipe first, in the background
-commandProcessor tcp_stream &
+commandProcessor "$tcp_fifo" &
 # Write to the pipe in the foreground
-nc -l -p 8090 > tcp_stream
+nc -l -p 8090 > "$tcp_fifo"
 NC_PID="$!" # get the process ID of the netcat process spawned above

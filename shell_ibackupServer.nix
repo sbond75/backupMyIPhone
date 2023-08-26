@@ -13,6 +13,7 @@ mkShell {
     netcat-gnu
     bindfs
     umount
+    acl
 
     which
   ];

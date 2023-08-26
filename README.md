@@ -59,6 +59,9 @@ makeEntry() {
 makeEntry "$username"
 ```
 
+5. Setup the server further by running this: `./ibackupServer.sh` (run as any user with `sudo` permissions since `sudo` will be used within the script).
+6. Run this command on the server to start the backup server: `sudo -E su --preserve-environment iosbackup_server ./ibackupServer.sh`
+
 ## Tools
 
 - Debug how usb/WiFi connections are doing: `nix-shell`, then `sudo usbmuxd -vv --debug --debug`
