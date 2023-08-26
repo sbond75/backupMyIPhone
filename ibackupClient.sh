@@ -24,8 +24,8 @@ if [ "$(whoami)" != "pi" ]; then
     exit 1
 fi
 
-#set -e
-set -ex
+set -e
+#set -ex
 
 # Sync network time for the raspberry pi (you may also need to set the timezone, such as by running `timedatectl set-timezone yourTimeZoneHere` (for a list of timezones, use `timedatectl list-timezones`)).
 timedatectl
@@ -138,7 +138,12 @@ function wasBackedUp_() {
 	    res="${wasBackedUp[index]}"
 	    if [ "$res" == "1" ]; then
 		# Check if this is too old
-		local now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+		local now=
+		if [ -z "$2" ]; then
+		    now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+		else
+		    now="$2"
+		fi
 		local past="${wasBackedUp_times[index]}"
 		local inc=$((86400 / 2)) # Seconds in a day divided by 2
 		local next=$(($past + $inc))
@@ -171,7 +176,13 @@ function setWasBackedUp_() {
 	    # Found it
 	    wasBackedUp[index]="$setTo"
 
-	    local now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+	    local now=
+	    if [ -z "$3" ]; then
+		now="$(date +%s)" # Get time in seconds since UNIX epoch ( https://stackoverflow.com/questions/1092631/get-current-time-in-seconds-since-the-epoch-on-linux-bash )
+	    else
+		now="$3"
+	    fi
+
 	    wasBackedUp_times[index]="$now"
 
 	    echo 1 # success
@@ -220,7 +231,9 @@ END_HEREDOC
 	    # Now we know which user this backup should go under.
 
 	    # Check if the device was backed up already
-	    local didBackup=$(wasBackedUp_ "$udid")
+	    local now="$(date +%s)"
+	    wasBackedUp_ "$udid" "$now" # for side effects only. Functions in bash can't write to globals in the surrounding bash process if you use a subshell with `$()` ( https://stackoverflow.com/questions/23564995/how-to-modify-a-global-variable-within-a-function-in-bash ). So we pass a parameter for `now` to it here to make it function exactly the same as the call to the same function below used in a subshell:
+	    local didBackup=$(wasBackedUp_ "$udid" "$now")
 	    if [ "$didBackup" == "2" ]; then
 		echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
 		continue
@@ -242,7 +255,7 @@ END_HEREDOC
 		mkdir "$mountPoint"
 	    fi
 	    echo "[ibackupClient] Mounting FTP filesystem..."
-	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "ftp://$username:$password@$config__host" "$mountPoint"
+	    curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" # FIXME: if password has commas it will probably break this `user=` stuff
 	    echo "[ibackupClient] Mounted FTP filesystem."
 
 	    # Prepare the server for backup:
@@ -282,7 +295,9 @@ END_HEREDOC
 
 	    # Save backup success status
 	    echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
-	    local found=$(setWasBackedUp_ "$udid" 1)
+	    local now="$(date +%s)"
+	    setWasBackedUp_ "$udid" 1 "$now" # for side effects only; then we do the below in a subshell:
+	    local found=$(setWasBackedUp_ "$udid" 1 "$now")
 	    if [ "$found" == "2" ]; then
 		# Not found, error
 		echo "[ibackupClient] Couldn't mark UDID $udid as completed. Ignoring error..."
