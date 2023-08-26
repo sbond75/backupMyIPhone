@@ -50,7 +50,7 @@ fi
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackupClient] Running with tee to logfile $logfile"
-    bash "$0" "1" 2>&1 | tee_with_timestamps "$logfile"
+    bash "$0" "$logfile" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
 # #
@@ -73,7 +73,7 @@ function parseOutput () {
 }
 
 # Fire up the beast (usbmuxd also spawns its own stuff) which grabs network devices but is also using sudo so we can access USB
-sudo `which usbmuxd` -v 2>&1 | parseOutput & # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd since we are using USB from the client here instead of WiFi backup.)
+sudo `which usbmuxd` --foreground -v 2>&1 | parseOutput & # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd since we are using USB from the client here instead of WiFi backup.)
 
 sleep 5
 
