@@ -19,5 +19,7 @@ mkShell {
     acl
 
     which
+
+    python3
   ];
 }
