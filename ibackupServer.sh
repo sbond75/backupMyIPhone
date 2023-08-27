@@ -147,7 +147,11 @@ setVars() {
     dest="$config__drive/home/$username/@iosBackups"
 }
 
-started=0 # 1 if backup is considered currently running, 0 if not running
+#started=0 # 1 if backup is considered currently running, 0 if not running
+# Load API for wasBackedUp etc. -- we use it to indicate if a backup is currently *running* or not instead of whether it was backed up! #
+source wasBackedUp.sh
+# #
+
 startBackup() {
     local udid="$1"
     # With backupMyIPhone.sh, just make a snapshot, then exit (the `1` after "$udid" does this)
@@ -158,10 +162,11 @@ startBackup() {
     setVars "$udid"
 
     # Open vsftpd on this user account for access
-    echo "[ibackupServer] Opening vsftpd for user $username_ftp"
+    echo "[ibackupServer] Opening vsftpd for user $username_ftp with device UDID ${udid}"
     if [ ! -e "$dest" ]; then
 	echo "[ibackupServer] Error: $dest doesn't exist. Not starting backup."
-	started=0
+	#started=0
+	setWasBackedUp_ "$udid" 0
     else
 	backupsLocation="$dest"
 	# Show the backups at {the ftp location}(<--the user's home directory)
@@ -169,7 +174,9 @@ startBackup() {
 	# https://unix.stackexchange.com/questions/115377/mount-bind-other-user-as-myself -- bindfs ( https://bindfs.org/ ) allows you to change users albeit a bit slower than Linux kernel bind mounts(<--`mount --bind`):
 	# This is so useful: https://bindfs.org/docs/bindfs.1.html : "--map" : "Given a mapping user1/user2, all files owned by user1 are shown as owned by user2. When user2 creates files, they are chowned to user1 in the underlying directory. When files are chowned to user2, they are chowned to user1 in the underlying directory. Works similarly for groups."
 	sudo bindfs --map="$username"/"$username_ftp" "$backupsLocation" "/home/$username_ftp" # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
-	started=1
+	#started=1
+	setWasBackedUp_ "$udid" 1
+	echo "[ibackupServer] Started vsftpd for user $username_ftp with device UDID ${udid}."
     fi
 }
 
@@ -199,7 +206,9 @@ finishBackup() {
     sudo umount "/home/$username_ftp" # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
     # Backup is finished
-    started=0
+    #started=0
+    setWasBackedUp_ "$udid" 0
+    echo "[ibackupServer] Stopped vsftpd for user $username_ftp with device UDID ${udid}."
 }
 
 runCommand() {
@@ -207,6 +216,10 @@ runCommand() {
     local command="$@"
     local arg0="$(echo "$command" | awk '{ print $1 }')"
     local arg1="$(echo "$command" | awk '{ print $2 }')"
+
+    local udid="$arg1"
+    local started=$(wasBackedUp_ "$udid")
+
     if [ "$arg0" == "startBackup" ] && [ "$started" == "0" ]; then
 	startBackup "$arg1"
     elif [ "$arg0" == "startBackup" ] && [ "$started" == "1" ]; then
@@ -226,12 +239,46 @@ commandProcessor() {
     export -f startBackup
     export -f finishBackup
     export -f makeSnapshot
-    export started
+    #export started
     export config__btrbk_daemon_port
     export -f setVars
     export config__drive
     export scriptDir
-    cat < "$stream" | xargs -d\\n -n1 bash -c 'runCommand $1' bash
+    function processOutput() {
+	while read data; do
+	    echo "${data}"
+
+	    local regex=$(
+cat <<'END_HEREDOC'
+^\[ibackupServer\] Started vsftpd for user ([^ ]+) with device UDID (.*).$
+END_HEREDOC
+)
+	    #if [[ "$data" == "[ibackupServer] Started vsftpd for user "* ]]; then
+	    if [[ $data =~ $regex ]]; then
+		# Started successfully -- update this global variable since the subprocess can't update globals
+		local user="${BASH_REMATCH[1]}"
+		local udid="${BASH_REMATCH[2]}"
+		#started=1
+		setWasBackedUp_ "$udid" 1
+		echo "[ibackupServer] Command processor recorded start for UDID $udid"
+	    else
+		local regex=$(
+cat <<'END_HEREDOC'
+^\[ibackupServer\] Stopped vsftpd for user ([^ ]+) with device UDID (.*).$
+END_HEREDOC
+)
+		if [[ $data =~ $regex ]]; then
+		    # Stopped successfully -- update this global variable since the subprocess can't update globals
+		    local user="${BASH_REMATCH[1]}"
+		    local udid="${BASH_REMATCH[2]}"
+		    #started=0
+		    setWasBackedUp_ "$udid" 0
+		    echo "[ibackupServer] Command processor recorded stop for UDID $udid"
+		fi
+	    fi
+	done
+    }
+    cat < "$stream" | xargs -d\\n -n1 bash -c 'runCommand $1' bash | processOutput
 }
 
 # Wait for a connection to take a snapshot
