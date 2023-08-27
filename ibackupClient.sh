@@ -302,6 +302,11 @@ END_HEREDOC
 	    if [ ! -e "$mountPoint" ]; then
 		mkdir "$mountPoint"
 	    fi
+	    # Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
+	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint'
+	    local signals='INT EXIT TERM HUP'
+	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
+	    # #
 	    echo "[ibackupClient] Mounting FTP filesystem..."
 	    # export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
 	    # curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
@@ -315,10 +320,6 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Mounted FTP filesystem."
-	    # Unmount on ctrl-c or exit if any
-	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint'
-	    local signals='INT EXIT TERM HUP'
-	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
@@ -354,6 +355,10 @@ END_HEREDOC
 		set +e
 	    fi
 
+	    # "Stop backup" but unsuccessfully on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
+	    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1 ; '"$oldTrap" $signals # Add a new trap to the existing one without overwriting it
+	    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
+	    # #
 	    # Prepare the server for backup:
 	    echo "[ibackupClient] Preparing server for backup..."
 	    serverCmd "startBackup"
@@ -367,9 +372,6 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Prepared server for backup."
-	    # "Stop backup" but unsuccessfully on ctrl-c or exit if any
-	    trap "$oldTrap ; "'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' $signals # Add a new trap to the existing one without overwriting it
-	    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
@@ -386,8 +388,15 @@ END_HEREDOC
 	    fi
 	    echo "[ibackupClient] Told server backup is done."
 
+	    # Clear trap to original item (to unmount)
+	    trap - $signals
+	    trap "$oldTrap" $signals
+
 	    # Unmount that user
 	    unmountUser "$mountPoint"
+
+	    # Clear trap
+	    trap - $signals
 
 	    # Save backup success status
 	    echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
