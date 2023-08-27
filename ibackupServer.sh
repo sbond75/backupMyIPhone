@@ -220,5 +220,5 @@ commandProcessor() {
 # Read from the pipe first, in the background
 commandProcessor "$tcp_fifo" &
 # Write to the pipe in the foreground
-nc -l -p "$config__serverCommands_port" > "$tcp_fifo"
+nc -v -l -p "$config__serverCommands_port" > "$tcp_fifo"
 NC_PID="$!" # get the process ID of the netcat process spawned above
