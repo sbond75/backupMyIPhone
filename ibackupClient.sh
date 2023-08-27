@@ -303,7 +303,8 @@ END_HEREDOC
 		mkdir "$mountPoint"
 	    fi
 	    # Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
-	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint'
+	    local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
+	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint ; '"$oldTrapEnd"
 	    local signals='INT EXIT TERM HUP'
 	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
 	    # #
