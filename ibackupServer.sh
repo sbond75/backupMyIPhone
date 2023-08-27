@@ -179,7 +179,11 @@ finishBackup() {
 
     # Check some preconditions
     if [ "$started" != "1" ]; then
-	echo "[ibackupServer] Backup is not currently started; can't finishBackup. Ignoring this command."
+	local uns=
+	if [ "$unsuccessful" == 1 ]; then
+	    uns="Unsuccessful"
+	fi
+	echo "[ibackupServer] Backup is not currently started; can't finishBackup${uns}. Ignoring this command."
 	return
     fi
 
@@ -220,6 +224,9 @@ commandProcessor() {
     export -f runCommand
     export -f startBackup
     export -f finishBackup
+    export -f makeSnapshot
+    export started
+    export config__btrbk_daemon_port
     cat < "$stream" | xargs -d\\n -n1 bash -c 'runCommand $1' bash
 }
 
