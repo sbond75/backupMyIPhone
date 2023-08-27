@@ -303,7 +303,9 @@ END_HEREDOC
 		mkdir "$mountPoint"
 	    fi
 	    # Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
-	    local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
+	    # Also note that it will only run the trap handler *after* the currently executing function in bash finishes. So if `sleep 30` is currently running and you press ctrl-c`, bash will only respond after the `sleep 30` command finishes ( https://unix.stackexchange.com/questions/387847/bash-script-doesnt-see-sighup )
+	    #local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
+	    local oldTrapEnd=''
 	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint ; '"$oldTrapEnd"
 	    local signals='INT EXIT TERM HUP'
 	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
@@ -416,9 +418,10 @@ END_HEREDOC
 
 # Fire up the beast (usbmuxd also spawns its own stuff) which grabs network devices but is also using sudo so we can access USB
 # NOTE: `parseOutput` doesn't run in the background with `&` here since trapping doesn't seem to work unless you don't run in the background ( https://stackoverflow.com/questions/43545512/unable-to-trap-ctrl-c-to-exit-function-exit-bash-script ) :
-sudo `which usbmuxd` --foreground -v 2>&1 | parseOutput # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd since we are using USB from the client here instead of WiFi backup.)
+sudo `which usbmuxd` --foreground -v 2>&1 | parseOutput & # This can be either "regular" usbmuxd (which doesn't seem to support WiFi comms properly) or usbmuxd2, based on the shell.nix used in the shebang. (So we want usbmuxd since we are using USB from the client here instead of WiFi backup.)
 
 #sleep 5
+wait # https://stackoverflow.com/questions/26858344/trap-not-working-in-shell-script
 
 # Now we wait for users to connect by checking the output of usbmuxd using the `parseOutput` function called above.
 # #
