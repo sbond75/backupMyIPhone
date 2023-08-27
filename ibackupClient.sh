@@ -69,7 +69,7 @@ fi
 
 function serverCmd_impl() {
     # `-v` for verbose (to show why connections fail, if they do)
-    netcat -v "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
+    netcat -v "$config__host" "$config__serverCommands_port" <<< "$1"$'\n'  # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
 function serverCmd() {
