@@ -203,13 +203,14 @@ finishBackup() {
 }
 
 runCommand() {
+    echo "[ibackupServer] runCommand: $@"
     local command="$1"
     local arg0="$(echo "$command" | awk '{ print $1 }')"
     local arg1="$(echo "$command" | awk '{ print $2 }')"
     if [ "$arg0" == "startBackup" ] && [ "$started" == "0" ]; then
 	startBackup "$arg1"
     elif [ "$arg0" == "startBackup" ] && [ "$started" == "1" ]; then
-        echo "Backup is already \"started\", nothing to do. It must have been left on or something..."
+        echo "[ibackupServer] Backup is already \"started\", nothing to do. It must have been left on or something..."
     elif [ "$arg0" == "finishBackup" ]; then
 	finishBackup "$arg1"
     elif [ "$arg0" == "finishBackupUnsuccessful" ]; then
