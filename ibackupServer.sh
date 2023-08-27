@@ -218,6 +218,7 @@ runCommand() {
     local arg1="$(echo "$command" | awk '{ print $2 }')"
 
     local udid="$arg1"
+    source wasBackedUp.sh
     local started=$(wasBackedUp_ "$udid")
 
     if [ "$arg0" == "startBackup" ] && [ "$started" == "0" ]; then
