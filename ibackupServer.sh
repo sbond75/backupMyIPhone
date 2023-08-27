@@ -227,6 +227,7 @@ commandProcessor() {
     export -f makeSnapshot
     export started
     export config__btrbk_daemon_port
+    export -f setVars
     cat < "$stream" | xargs -d\\n -n1 bash -c 'runCommand $1' bash
 }
 
