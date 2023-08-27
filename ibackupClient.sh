@@ -69,7 +69,7 @@ fi
 
 function serverCmd_impl() {
     # `-v` for verbose (to show why connections fail, if they do)
-    netcat -v "$config__host" "$config__serverCommands_port" <<< "$1"$'\n'  # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
+    netcat -v "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
 function serverCmd() {
@@ -314,8 +314,9 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Mounted FTP filesystem."
-	    # Unmount on ctrl-c if any
-	    trap 'echo "trap worked 1"; unmountUser $mountPoint' INT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground
+	    # Unmount on ctrl-c or exit if any
+	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint'
+	    trap "$oldTrap" INT EXIT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
@@ -364,8 +365,9 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Prepared server for backup."
-	    # "Stop backup" but unsuccessfully on ctrl-c if any
-	    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground
+	    # "Stop backup" but unsuccessfully on ctrl-c or exit if any
+	    trap "$oldTrap ; "'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT # Add a new trap to the existing one without overwriting it
+	    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
