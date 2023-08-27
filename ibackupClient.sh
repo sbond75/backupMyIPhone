@@ -82,7 +82,7 @@ function serverCmd() {
 	    serverCmd_impl "$1"
 	    exitCode="$?"
 	    if [ "$exitCode" == "0" ]; then
-		:
+		break
 	    else
 		echo "[ibackupClient] Running command $1 on server failed with exit code $exitCode. Retrying in 30 seconds..."
 	    fi
@@ -233,6 +233,7 @@ function unmountUser() {
 	exitCode="$?"
 	if [ "$exitCode" == "0" ]; then
 	    echo "[ibackupClient] Unmounted FTP filesystem."
+	    break
 	else
 	    echo "[ibackupClient] Unmounting FTP filesystem failed with exit code $exitCode. Retrying in 30 seconds..."
 	fi
@@ -316,7 +317,8 @@ END_HEREDOC
 	    echo "[ibackupClient] Mounted FTP filesystem."
 	    # Unmount on ctrl-c or exit if any
 	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint'
-	    trap "$oldTrap" INT EXIT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
+	    local signals='INT EXIT TERM HUP'
+	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
@@ -366,7 +368,7 @@ END_HEREDOC
 	    fi
 	    echo "[ibackupClient] Prepared server for backup."
 	    # "Stop backup" but unsuccessfully on ctrl-c or exit if any
-	    trap "$oldTrap ; "'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT # Add a new trap to the existing one without overwriting it
+	    trap "$oldTrap ; "'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' $signals # Add a new trap to the existing one without overwriting it
 	    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
 
 	    # Perform the backup:
