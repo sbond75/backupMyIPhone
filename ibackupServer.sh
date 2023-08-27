@@ -219,6 +219,7 @@ commandProcessor() {
     local stream="$1"
     export -f runCommand
     export -f startBackup
+    export -f finishBackup
     cat < "$stream" | xargs -d\\n -n1 bash -c runCommand bash
 }
 
@@ -227,5 +228,6 @@ commandProcessor() {
 # Read from the pipe first, in the background
 commandProcessor "$tcp_fifo" &
 # Write to the pipe in the foreground
-nc -v -l -p "$config__serverCommands_port" > "$tcp_fifo"
+# `-k` "to stay listening for another connection after its current connection is completed." ( https://unix.stackexchange.com/questions/423407/how-can-i-keep-netcat-connection-open )
+nc -v -l -k -p "$config__serverCommands_port" > "$tcp_fifo"
 NC_PID="$!" # get the process ID of the netcat process spawned above
