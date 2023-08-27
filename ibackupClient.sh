@@ -202,7 +202,7 @@ function wasBackedUp_() {
 function setWasBackedUp_() {
     local udid="$1"
     local setTo="$2"
-    local index = 0
+    local index=0
     for i in "${udidTableKeysArray[@]}"
     do
 	if [ "$i" == "$udid" ]; then
@@ -401,7 +401,7 @@ END_HEREDOC
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
-	    idevicebackup2 --udid "$deviceToConnectTo" backup "$dest"
+	    idevicebackup2 --udid "$deviceToConnectTo" backup "$dest/${userFolderName}_ftp"
 	    local exitCode="$?"
 	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
 
@@ -409,10 +409,11 @@ END_HEREDOC
 	    echo "[ibackupClient] Telling server backup is done..."
 	    if [ "$exitCode" == "0" ]; then
 		serverCmd "finishBackup" 1 "$udid"
+		echo "[ibackupClient] Told server backup is done successfully."
 	    else
 		serverCmd "finishBackupUnsuccessful" 1 "$udid"
+		echo "[ibackupClient] Told server backup is done unsuccessfully."
 	    fi
-	    echo "[ibackupClient] Told server backup is done."
 
 	    # Clear trap to original item (to unmount)
 	    trap "$oldTrap" $signals
