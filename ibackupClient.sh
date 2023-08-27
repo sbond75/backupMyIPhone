@@ -335,6 +335,9 @@ END_HEREDOC
 		local exitCode="$?"
 		if [ "$exitCode" != "0" ]; then
 		    echo "[ibackupClient] Enabling encryption failed with exit code $exitCode. Skipping this backup until device is reconnected."
+		
+		    # Clear trap
+		    trap - $signals
 
 		    # Unmount that user
 		    unmountUser "$mountPoint"
@@ -349,6 +352,9 @@ END_HEREDOC
 		    local exitCode="$?"
 		    if [ "$exitCode" != "0" ]; then
 			echo "[ibackupClient] Setting backup password failed with exit code $exitCode. Skipping this backup until device is reconnected."
+		
+			# Clear trap
+			trap - $signals
 
 			# Unmount that user
 			unmountUser "$mountPoint"
@@ -373,12 +379,12 @@ END_HEREDOC
 	    local exitCode="$?"
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
-
-		# Unmount that user
-		unmountUser "$mountPoint"
 		
 		# Clear trap
 		trap - $signals
+
+		# Unmount that user
+		unmountUser "$mountPoint"
 
 		continue
 	    fi
