@@ -69,13 +69,17 @@ fi
 
 
 function serverCmd_impl() {
+    local command="$1"
+    local udid="$2"
+
     # `-v` for verbose (to show why connections fail, if they do)
     # `-N` to exit after sending ( https://unix.stackexchange.com/questions/332163/netcat-send-text-to-echo-service-read-reply-then-exit )
-    netcat -N -v "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
+    netcat -N -v "$config__host" "$config__serverCommands_port" <<< "$command $udid" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
 function serverCmd() {
     local retryTillSuccess="$2"
+    local udid="$3"
 
     if [ "$retryTillSuccess" == "1" ]; then
 	# Keep trying till it succeeds, since this is important:
@@ -91,7 +95,7 @@ function serverCmd() {
 	    sleep 30
 	done
     else
-	serverCmd_impl "$1"
+	serverCmd_impl "$1" "$udid"
     fi
 }
 
@@ -375,12 +379,12 @@ END_HEREDOC
 	    fi
 
 	    # "Stop backup" but unsuccessfully on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
-	    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1 ; '"$oldTrap" $signals # Add a new trap to the existing one without overwriting it
+	    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1 '"$udid"' ; '"$oldTrap" $signals # Add a new trap to the existing one without overwriting it
 	    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
 	    # #
 	    # Prepare the server for backup:
 	    echo "[ibackupClient] Preparing server for backup..."
-	    serverCmd "startBackup"
+	    serverCmd "startBackup" 0 "$udid"
 	    local exitCode="$?"
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
@@ -404,9 +408,9 @@ END_HEREDOC
 	    # Tell the server we are done backing up:
 	    echo "[ibackupClient] Telling server backup is done..."
 	    if [ "$exitCode" == "0" ]; then
-		serverCmd "finishBackup" 1
+		serverCmd "finishBackup" 1 "$udid"
 	    else
-		serverCmd "finishBackupUnsuccessful" 1
+		serverCmd "finishBackupUnsuccessful" 1 "$udid"
 	    fi
 	    echo "[ibackupClient] Told server backup is done."
 
