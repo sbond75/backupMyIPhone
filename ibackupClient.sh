@@ -308,7 +308,7 @@ END_HEREDOC
 	    #local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
 	    local oldTrapEnd=''
 	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint ; '"$oldTrapEnd"
-	    local signals='INT EXIT TERM HUP'
+	    local signals='EXIT'
 	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
 	    # #
 	    echo "[ibackupClient] Mounting FTP filesystem..."
@@ -321,6 +321,10 @@ END_HEREDOC
 	    local exitCode="$?"
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+		# Clear trap
+		trap - $signals
+
 		continue
 	    fi
 	    echo "[ibackupClient] Mounted FTP filesystem."
@@ -372,6 +376,9 @@ END_HEREDOC
 
 		# Unmount that user
 		unmountUser "$mountPoint"
+		
+		# Clear trap
+		trap - $signals
 
 		continue
 	    fi
@@ -393,7 +400,6 @@ END_HEREDOC
 	    echo "[ibackupClient] Told server backup is done."
 
 	    # Clear trap to original item (to unmount)
-	    trap - $signals
 	    trap "$oldTrap" $signals
 
 	    # Unmount that user
