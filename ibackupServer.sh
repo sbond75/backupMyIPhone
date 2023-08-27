@@ -175,6 +175,7 @@ startBackup() {
 
 finishBackup() {
     local udid="$1"
+    local unsuccessful="$2"
 
     # Check some preconditions
     if [ "$started" != "1" ]; then
@@ -184,9 +185,11 @@ finishBackup() {
 
     setVars "$udid"
 
-    # Just make a snapshot
-    btrfsDaemonPort="$config__btrbk_daemon_port"
-    makeSnapshot "$(dirname "$dest")"
+    if [ "$unsuccessful" != "1" ]; then
+	# Make a snapshot
+	btrfsDaemonPort="$config__btrbk_daemon_port"
+	makeSnapshot "$(dirname "$dest")"
+    fi
 
     # Remove bindfs mount
     sudo umount "/home/$username_ftp" # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
@@ -199,10 +202,14 @@ runCommand() {
     local command="$1"
     local arg0="$(echo "$command" | awk '{ print $1 }')"
     local arg1="$(echo "$command" | awk '{ print $2 }')"
-    if [ "$arg0" == "startBackup" ]; then
+    if [ "$arg0" == "startBackup" ] && [ "$started" == "0" ]; then
 	startBackup "$arg1"
+    elif [ "$arg0" == "startBackup" ] && [ "$started" == "1" ]; then
+        echo "Backup is already \"started\", nothing to do. It must have been left on or something..."
     elif [ "$arg0" == "finishBackup" ]; then
 	finishBackup "$arg1"
+    elif [ "$arg0" == "finishBackupUnsuccessful" ]; then
+	finishBackup "$arg1" 1
     else
 	echo "[ibackupServer] Unknown command: $command"
     fi

@@ -314,6 +314,8 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Mounted FTP filesystem."
+	    # Unmount on ctrl-c if any
+	    trap 'echo "trap worked 1"; unmountUser $mountPoint' INT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
@@ -362,6 +364,8 @@ END_HEREDOC
 		continue
 	    fi
 	    echo "[ibackupClient] Prepared server for backup."
+	    # "Stop backup" but unsuccessfully on ctrl-c if any
+	    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
@@ -371,7 +375,11 @@ END_HEREDOC
 
 	    # Tell the server we are done backing up:
 	    echo "[ibackupClient] Telling server backup is done..."
-	    serverCmd "finishBackup" 1
+	    if [ "$exitCode" == "0" ]; then
+		serverCmd "finishBackup" 1
+	    else
+		serverCmd "finishBackupUnsuccessful" 1
+	    fi
 	    echo "[ibackupClient] Told server backup is done."
 
 	    # Unmount that user
