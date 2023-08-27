@@ -266,6 +266,7 @@ END_HEREDOC
 	    # Add dash at the 8th position of the udid string ( https://www.unix.com/shell-programming-and-scripting/149658-insert-character-particular-position.html )
 	    udid="$(echo "$udid" | sed 's/./&-/8')"
 	    # Delay to prevent it not being found
+	    echo "[ibackupClient] Sleeping for 5 seconds..."
 	    sleep 5
 	    # Print device info for reference:
 	    ideviceinfo --udid "$udid"
