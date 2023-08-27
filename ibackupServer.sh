@@ -229,5 +229,6 @@ commandProcessor() {
 commandProcessor "$tcp_fifo" &
 # Write to the pipe in the foreground
 # `-k` "to stay listening for another connection after its current connection is completed." ( https://unix.stackexchange.com/questions/423407/how-can-i-keep-netcat-connection-open )
-nc -v -l -k -p "$config__serverCommands_port" > "$tcp_fifo"
+#nc -v -l -p "$config__serverCommands_port" > "$tcp_fifo"
+nc -v -d -k -l 0.0.0.0 "$config__serverCommands_port" > "$tcp_fifo" # 0.0.0.0 lets any computer connect ( https://poe.com/Assistant )
 NC_PID="$!" # get the process ID of the netcat process spawned above

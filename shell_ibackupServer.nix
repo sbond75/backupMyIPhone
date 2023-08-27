@@ -10,7 +10,10 @@ with pkgs;
 
 mkShell {
   buildInputs = [
-    netcat-gnu
+    #netcat-gnu
+    netcat
+    #netcat-openbsd
+
     bindfs
     umount
     acl
