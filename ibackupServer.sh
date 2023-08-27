@@ -220,7 +220,7 @@ commandProcessor() {
     export -f runCommand
     export -f startBackup
     export -f finishBackup
-    cat < "$stream" | xargs -d\\n -n1 bash -c runCommand bash
+    cat < "$stream" | xargs -d\\n -n1 bash -c 'runCommand $1' bash
 }
 
 # Wait for a connection to take a snapshot

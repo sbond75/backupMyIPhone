@@ -14,6 +14,7 @@
 # }
 # sudo apt install lftp
 # sudo apt-get install curlftpfs
+# sudo apt-get install netcat
 # # Transfer the certificate from server into whatever you put in config.sh for `config__certPath`, then test out your connection using this command, replacing `usernameHere_ftp` with the FTP username (run `source config.sh` first):
 # lftp -d -u usernameHere_ftp -e 'set ftp:ssl-force true' -e 'set ssl:ca-file '"$config__certPath ; set ssl:check-hostname false;" $config__host  # FTP test command
 # # Compile libimobiledevice (Nix doesn't seem to work on armv7l as of writing) :
@@ -69,7 +70,8 @@ fi
 
 function serverCmd_impl() {
     # `-v` for verbose (to show why connections fail, if they do)
-    netcat -v "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
+    # `-N` to exit after sending ( https://unix.stackexchange.com/questions/332163/netcat-send-text-to-echo-service-read-reply-then-exit )
+    netcat -N -v "$config__host" "$config__serverCommands_port" <<< "$1" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
 function serverCmd() {
