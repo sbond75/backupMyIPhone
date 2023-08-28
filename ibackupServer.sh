@@ -185,6 +185,7 @@ finishBackup() {
     local unsuccessful="$2"
 
     # Check some preconditions
+    local started=$(wasBackedUp_ "$udid")
     if [ "$started" != "1" ]; then
 	local uns=
 	if [ "$unsuccessful" == 1 ]; then

@@ -281,7 +281,7 @@ END_HEREDOC
 
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
-	    # FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
+	    # FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls (at the top of this `function parseOutput ()` function) aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
 	    idevicebackup2 --udid "$deviceToConnectTo" backup "$dest/${userFolderName}_ftp"
 	    local exitCode="$?"
 	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
