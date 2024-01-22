@@ -20,4 +20,7 @@ config__serverCommands_port=8090
 # For remote backups, a Linux user account like userNameHere (which is usually something followed by the `_iosbackup` suffix) gotten from udidToFolderLookupTable.py will get the suffix `_ftp` added (i.e. it becomes `userNameHere_ftp`) as the username for FTP login. The password will be gotten from one of the below which are of the form `config__usernameForFTP=passwordForFTPHere`:
 config__userNameHere_iosbackup_ftp='passwordForFTPHere'
 config__user2NameHere_iosbackup_ftp='password2ForFTPHere'
+
+# For remote backups: destination for the backup on the client when `useLocalDiskThenTransfer` argument is set to 1 in `ibackupClient.sh`
+config__localDiskPath=/mnt/someMountPointHere2
 # #

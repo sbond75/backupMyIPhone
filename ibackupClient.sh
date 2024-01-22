@@ -37,6 +37,7 @@ timedatectl
 
 ranWithTeeAlready="$1" # Internal use, leave empty
 firstTime="$2" # Set to 1 to enable backup encryption interactively
+useLocalDiskThenTransfer="$3" # Optional; set to a path to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
 
 # Script setup #
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
@@ -194,33 +195,58 @@ END_HEREDOC
 	    if [ ! -e "$mountPoint" ]; then
 		mkdir "$mountPoint"
 	    fi
-	    # Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
-	    # Also note that it will only run the trap handler *after* the currently executing function in bash finishes. So if `sleep 30` is currently running and you press ctrl-c`, bash will only respond after the `sleep 30` command finishes ( https://unix.stackexchange.com/questions/387847/bash-script-doesnt-see-sighup )
-	    #local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
-	    local oldTrapEnd=''
-	    local oldTrap='echo "trap worked 1"; unmountUser $mountPoint ; '"$oldTrapEnd"
-	    local signals='EXIT'
-	    trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
-	    # #
-	    echo "[ibackupClient] Mounting FTP filesystem..."
-	    # export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
-	    # curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
+	    if [ -z "$useLocalDiskThenTransfer" ]; then
+		# Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
+		# Also note that it will only run the trap handler *after* the currently executing function in bash finishes. So if `sleep 30` is currently running and you press ctrl-c`, bash will only respond after the `sleep 30` command finishes ( https://unix.stackexchange.com/questions/387847/bash-script-doesnt-see-sighup )
+		#local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
+		local oldTrapEnd=''
+		local oldTrap='echo "trap worked 1"; unmountUser $mountPoint ; '"$oldTrapEnd"
+		local signals='EXIT'
+		trap "$oldTrap" $signals # https://superuser.com/questions/1719758/bash-script-to-catch-ctrlc-at-higher-level-without-interrupting-the-foreground , https://askubuntu.com/questions/1464619/run-command-before-script-exits
+		# #
+		echo "[ibackupClient] Mounting FTP filesystem..."
+		# export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
+		# curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
 
-	    # https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
-	    curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
-	    # By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
-	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
+		# https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
+		curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
+		# By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
+		# Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 
-	    local exitCode="$?"
-	    if [ "$exitCode" != "0" ]; then
-		echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
+		local exitCode="$?"
+		if [ "$exitCode" != "0" ]; then
+		    echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
-		# Clear trap
-		trap - $signals
+		    # Clear trap
+		    trap - $signals
 
-		continue
+		    continue
+		fi
+		echo "[ibackupClient] Mounted FTP filesystem."
+		destFull="$dest/${userFolderName}_ftp"
+	    else
+		# Local disk to use
+		echo "[ibackupClient] After downloading server contents, will back up to local location $useLocalDiskThenTransfer and then transfer to server."
+		destFull="$useLocalDiskThenTransfer/${userFolderName}"
+		mkdir -p "$destFull"
+
+		# Download backup from server first
+		echo "[ibackupClient] Downloading server backup contents..."
+		localDir="$destFull"
+		remoteDir="."
+		lftp -d -u "$username" -f "
+set ftp:ssl-force true
+set ssl:ca-file $config__certPath
+set ssl:check-hostname false
+open $config__host
+user $username $password
+lcd $localDir
+mirror --continue --delete --verbose $remoteDir $localDir
+bye
+" "$config__host"
+		exitCode="$?"
+		echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
 	    fi
-	    echo "[ibackupClient] Mounted FTP filesystem."
 
 	    if [ "$firstTime" == "1" ]; then
 		# Enable encryption
@@ -286,9 +312,37 @@ END_HEREDOC
 	    # Perform the backup:
 	    echo "[ibackupClient] Starting backup."
 	    # FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls (at the top of this `function parseOutput ()` function) aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
-	    idevicebackup2 --udid "$deviceToConnectTo" backup "$dest/${userFolderName}_ftp"
+	    idevicebackup2 --udid "$deviceToConnectTo" backup "$destFull"
 	    local exitCode="$?"
 	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
+
+	    if [ "$exitCode" == "0" ] && [ ! -z "$useLocalDiskThenTransfer" ]; then
+		# Need to transfer backup to server now
+		echo "[ibackupClient] Beginning transfer of backup to server..."
+		localDir="$destFull"
+		remoteDir="."
+		# https://stackoverflow.com/questions/5245968/syntax-for-using-lftp-to-synchronize-local-folder-with-an-ftp-folder
+		# lftp -f "
+# open $config__host
+# user $username $password
+# lcd $localDir
+# mirror --continue --delete --verbose $remoteDir $localDir
+# bye
+# "
+		# The key: `--reverse` here goes from "Local directory to FTP server directory":
+		lftp -d -u "$username" -f "
+set ftp:ssl-force true
+set ssl:ca-file $config__certPath
+set ssl:check-hostname false
+open $config__host
+user $username $password
+lcd $localDir
+mirror --continue --reverse --delete --verbose $localDir $remoteDir
+bye
+" "$config__host"
+		exitCode="$?"
+		echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
+	    fi
 
 	    # Tell the server we are done backing up:
 	    echo "[ibackupClient] Telling server backup is done..."
@@ -300,11 +354,13 @@ END_HEREDOC
 		echo "[ibackupClient] Told server backup is done unsuccessfully."
 	    fi
 
-	    # Clear trap to original item (to unmount)
-	    trap "$oldTrap" $signals
+	    if [ -z "$useLocalDiskThenTransfer" ]; then
+		# Clear trap to original item (to unmount)
+		trap "$oldTrap" $signals
 
-	    # Unmount that user
-	    unmountUser "$mountPoint"
+		# Unmount that user
+		unmountUser "$mountPoint"
+	    fi
 
 	    # Clear trap
 	    trap - $signals
