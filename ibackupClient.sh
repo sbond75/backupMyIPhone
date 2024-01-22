@@ -13,7 +13,11 @@
 # sudo apt-get install cifs-utils
 # }
 # sudo apt install lftp
-# sudo apt-get install curlftpfs
+# # Can use this instead of rclone but it is slow (in the kilobytes per second): sudo apt-get install curlftpfs
+# # nvm, is too old version (v1.35, latest is v1.63.1 and we will use the command line mount without config settings, just command line arguments, and this old version doesn't have that.) sudo apt install rclone  # faster?
+# # nvm, is too new version, fusermount3 command not found (fuse3 is needed for rclone deb above also (to have the fusermount3 command -- https://github.com/rclone/rclone/issues/6844 ) but there is no package that I can find so I can't use rclone really..): mkdir iphone_libs ; cd iphone_libs && wget https://downloads.rclone.org/v1.63.1/rclone-v1.63.1-linux-arm-v7.deb && sudo dpkg -i *.deb   # List of downloads is on https://rclone.org/downloads/
+# mkdir iphone_libs ; cd iphone_libs && wget https://downloads.rclone.org/v1.52.3/rclone-v1.52.3-linux-arm.deb && sudo dpkg -i *.deb   # List of downloads is on https://rclone.org/downloads/
+
 # sudo apt-get install netcat
 # # Transfer the certificate from server into whatever you put in config.sh for `config__certPath`, then test out your connection using this command, replacing `usernameHere_ftp` with the FTP username (run `source config.sh` first):
 # lftp -d -u usernameHere_ftp -e 'set ftp:ssl-force true' -e 'set ssl:ca-file '"$config__certPath ; set ssl:check-hostname false;" $config__host  # FTP test command
