@@ -76,6 +76,17 @@ fi
 # Grab functions (and config which was actually already grabbed)
 source ibackupClient_common.sh
 
+# Prepare PID tables #
+backupPID=()
+udidTableKeys=$(python3 "$scriptDir/udidToFolderLookupTable.py" "" 0 1)
+readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-delimited array of strings} out of a string and into an array. `-t` to strip newlines. ( https://www.javatpoint.com/bash-split-string#:~:text=In%20bash%2C%20a%20string%20can,the%20string%20in%20split%20form. , https://stackoverflow.com/questions/41721847/readarray-t-option-in-bash-default-behavior )
+
+for i in "${udidTableKeysArray[@]}"
+do
+    backupPID+=('') # No PID yet
+done
+# #
+
 # Run usbmuxd and wait for devices to connect. When they do, identify them as one of the users in udidToFolderLookupTable.py and then check if a backup has been made today. If a backup hasn't been made, start the backup. #
 
 # https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
@@ -100,8 +111,86 @@ END_HEREDOC
 	    echo "[ibackupClient] Device found: $udid"
 	    # Add dash at the 8th position of the udid string ( https://www.unix.com/shell-programming-and-scripting/149658-insert-character-particular-position.html )
 	    udid="$(echo "$udid" | sed 's/./&-/8')"
-	    #udid="$udid" bash ibackupClient_doBackup.sh & # Spawn background process
-	    source ibackupClient_doBackup.sh
+
+	    # Spawn background process to back it up only if not already running
+	    local skip=0 # assume 0
+	    for i in "${udidTableKeysArray[@]}"
+	    do
+		if [ "$i" == "$udid" ]; then
+		    # Found it
+		    if [ "${backupPID[index]}" != "" ]; then
+			# Running already, don't run
+			echo "[ibackupClient] Backup background process for $udid is already running, not spawning a new one."
+			skip=1
+		    fi
+		fi
+	    done
+	    if [ "$skip" == "1" ]; then
+		continue
+	    fi
+
+	    udid="$udid" bash ibackupClient_doBackup.sh & # Spawn background process
+	    #source ibackupClient_doBackup.sh
+
+	    # Save background process's PID
+	    THE_PID=$!
+
+	    myhandler() {
+		echo "[ibackupClient] sigchld received"
+
+		# wait only for the pid terminated
+		# https://unix.stackexchange.com/questions/344582/discriminate-between-chld-sub-shells-in-trap-function
+		for job in `jobs -p`; do
+		    echo "[ibackupClient] PID => ${job}"
+		    if ! wait ${job} ; then
+			local exitCode="$?"
+			if [ "$exitCode" == "0" ]; then
+			    echo "[ibackupClient] PID ${job} succeeded with exit code $exitCode"
+			else
+			    echo "[ibackupClient] PID ${job} failed with exit code $exitCode"
+			fi
+			# echo "At least one test failed with exit code => $?" ;
+			# EXIT_CODE=1;
+			
+			# "Remove" it from the array
+			local i=0
+			local found=0 # assume 0
+			for pid in ${backupPID[*]}; do
+			    if [ "$pid" == "${job}" ]; then
+				backupPID[i]=""
+				found=1
+				break
+			    fi
+			    i=$((i+1))
+			done
+			if [ "$found" == "0" ]; then
+			    echo "[ibackupClient] Error: PID ${job} not found in backupPID array. Continuing anyway..."
+			fi
+		    fi
+		done
+
+		# # wait for all pids
+		# for pid in ${backupPID[*]}; do
+		#     if [ "$pid" != "" ]; then
+		# 	wait $pid
+		#     fi
+		# done
+	    }
+	    # When the subprocess terminates, we want to be notified:
+	    trap myhandler CHLD
+
+	    local found=0 # assume 0
+	    for i in "${udidTableKeysArray[@]}"
+	    do
+		if [ "$i" == "$udid" ]; then
+		    # Found it
+		    backupPID[index]="$THE_PID"
+		    found=1
+		fi
+	    done
+	    if [ "$found" == "0" ]; then
+		echo "[ibackupClient] Error: backup background process for $udid couldn't be saved as running. Continuing anyway..."
+	    fi
 	fi
 
 	set -e
