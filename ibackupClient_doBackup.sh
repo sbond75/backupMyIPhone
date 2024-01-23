@@ -89,6 +89,8 @@ function doBackup() {
 	if [ "$firstTime" == "1" ]; then
 	    # Use sudo to make destination directory
 	    sudo mkdir -p "$destFull"
+	    # Chown it
+	    sudo chown -R pi "$config__localDiskPath"
 	else
 	    mkdir -p "$destFull"
 	fi
