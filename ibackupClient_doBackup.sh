@@ -87,10 +87,11 @@ function doBackup() {
 	destFull="$config__localDiskPath/${userFolderName}"
 
 	# Mount if needed
+	local madeDiskMount=0 # assume 0
 	if [ ! -z "$config__localDisk" ]; then # (optional)
 	    #mountpoint "$config__localDisk" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
 	    local failed=0 # assume 0
-	    mountpoint "$config__localDisk" || { echo "[ibackupClient] Mounting $config__localDisk from $config__localDiskDevice"
+	    mountpoint "$config__localDisk" || { madeDiskMount=1 ; echo "[ibackupClient] Mounting $config__localDisk from $config__localDiskDevice"
 						     # Use sudo to make disk directory
 						     && sudo mkdir -p "$config__localDisk"
 						     # Mount it
@@ -101,7 +102,7 @@ function doBackup() {
 	fi
 
 	set -e
-	if [ "$firstTime" == "1" ]; then
+	if [ "$firstTime" == "1" ] || [ "$madeDiskMount" == "1" ]; then
 	    # Use sudo to make destination directory
 	    sudo mkdir -p "$destFull"
 	    # Chown it
