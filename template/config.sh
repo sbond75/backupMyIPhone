@@ -21,6 +21,10 @@ config__serverCommands_port=8090
 config__userNameHere_iosbackup_ftp='passwordForFTPHere'
 config__user2NameHere_iosbackup_ftp='password2ForFTPHere'
 
+# For remote backups: the mountpoint for device `config__localDiskDevice`. This path will be mounted using that device if needed.
+config__localDisk=/media/pi/iOSBackupClient
 # For remote backups: destination for the backup on the client when `useLocalDiskThenTransfer` argument is set to 1 in `ibackupClient.sh`
-config__localDiskPath=/mnt/someMountPointHere2
+config__localDiskPath="$config__localDisk/iOSBackups"
+# For remote backups: the device that should be mounted in order to access `config__localDiskPath`.
+config__localDiskDevice=/dev/disk/by-label/iOSBackupClient
 # #

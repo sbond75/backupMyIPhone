@@ -85,6 +85,17 @@ function doBackup() {
 	# Local disk to use
 	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath and then transfer to server."
 	destFull="$config__localDiskPath/${userFolderName}"
+
+	# Mount if needed
+	if [ ! -z "$config__localDisk" ]; then # (optional)
+	    #mountpoint "$config__localDisk" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
+	    local failed=0 # assume 0
+	    mountpoint "$config__localDisk" || { echo "[ibackupClient] Mounting $config__localDisk from $config__localDiskDevice" && sudo mount "$config__localDiskDevice" "$config_localDisk" ; } || { echo "Error: failed to mount backup destination drive. Not backing up this device for now."; failed=1; }
+	    if [ "$failed" == "1" ]; then
+		return
+	    fi
+	fi
+
 	set -e
 	if [ "$firstTime" == "1" ]; then
 	    # Use sudo to make destination directory
