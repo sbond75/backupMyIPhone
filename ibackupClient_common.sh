@@ -1,3 +1,4 @@
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 # Grab config
 source "$scriptDir/config.sh"
 
