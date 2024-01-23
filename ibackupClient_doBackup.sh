@@ -42,8 +42,10 @@ function doBackup() {
     local username="${userFolderName}"'_ftp'
     local password="$(eval echo '$config__'"$username")"
     local mountPoint="${config__clientDirectory}/$username"
-    if [ ! -e "$mountPoint" ]; then
+    if [ ! -e "$mountPoint" ] && [ "$useLocalDiskThenTransfer" != "1" ]; then
+	set -e
 	mkdir "$mountPoint"
+	set +e
     fi
     if [ "$useLocalDiskThenTransfer" != "1" ]; then
 	# Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
@@ -70,21 +72,32 @@ function doBackup() {
 	    # Clear trap
 	    trap - $signals
 
-	    continue
+	    #continue
+	    return
 	fi
 	echo "[ibackupClient] Mounted FTP filesystem."
 	destFull="$dest/${userFolderName}_ftp"
+	# if [ "$firstTime" == "1" ]; then
+	#     # Use sudo to make destination directory
+	#     sudo mkdir -p "$destFull"
+	# fi
     else
 	# Local disk to use
 	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath and then transfer to server."
 	destFull="$config__localDiskPath/${userFolderName}"
-	mkdir -p "$destFull"
+	set -e
+	if [ "$firstTime" == "1" ]; then
+	    # Use sudo to make destination directory
+	    sudo mkdir -p "$destFull"
+	else
+	    mkdir -p "$destFull"
+	fi
 
 	# Download backup from server first
 	echo "[ibackupClient] Downloading server backup contents..."
 	localDir="$destFull"
 	remoteDir="."
-	lftp -d -u "$username" -f "
+	lftp -d -f "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
@@ -96,6 +109,7 @@ function doBackup() {
     " "$config__host"
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
+	set +e
     fi
 
     if [ "$firstTime" == "1" ]; then
@@ -122,11 +136,13 @@ function doBackup() {
 	if [ "$exitCode" != "0" ]; then
 	    echo "[ibackupClient] Enabling encryption failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
-	    # Clear trap
-	    trap - $signals
+	    if [ "$useLocalDiskThenTransfer" != "1" ]; then
+		# Clear trap
+		trap - $signals
 
-	    # Unmount that user
-	    unmountUser "$mountPoint"
+		# Unmount that user
+		unmountUser "$mountPoint"
+	    fi
 
 	    #continue
 	    return
@@ -140,13 +156,16 @@ function doBackup() {
 	    if [ "$exitCode" != "0" ]; then
 		echo "[ibackupClient] Setting backup password failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
-		# Clear trap
-		trap - $signals
+		if [ "$useLocalDiskThenTransfer" != "1" ]; then
+		    # Clear trap
+		    trap - $signals
 
-		# Unmount that user
-		unmountUser "$mountPoint"
+		    # Unmount that user
+		    unmountUser "$mountPoint"
+		fi
 
-		continue
+		#continue
+		return
 	    fi
 	else
 	    :
@@ -167,13 +186,16 @@ function doBackup() {
     if [ "$exitCode" != "0" ]; then
 	echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
-	# Clear trap
-	trap - $signals
+	if [ "$useLocalDiskThenTransfer" != "1" ]; then
+	    # Clear trap
+	    trap - $signals
 
-	# Unmount that user
-	unmountUser "$mountPoint"
+	    # Unmount that user
+	    unmountUser "$mountPoint"
+	fi
 
-	continue
+	#continue
+	return
     fi
     echo "[ibackupClient] Prepared server for backup."
 
@@ -198,7 +220,7 @@ function doBackup() {
     # bye
     # "
 	# The key: `--reverse` here goes from "Local directory to FTP server directory":
-	lftp -d -u "$username" -f "
+	lftp -d -f "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
@@ -228,10 +250,10 @@ function doBackup() {
 
 	# Unmount that user
 	unmountUser "$mountPoint"
-    fi
 
-    # Clear trap
-    trap - $signals
+	# Clear trap
+	trap - $signals
+    fi
 
     # Save backup success status
     echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
