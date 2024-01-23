@@ -178,6 +178,8 @@ END_HEREDOC
 	    }
 	    # When the subprocess terminates, we want to be notified:
 	    trap myhandler CHLD
+	    # When this script terminates, we want to stop the subprocesses:
+	    trap 'kill $(jobs -p)' SIGINT SIGTERM EXIT # https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
 
 	    local found=0 # assume 0
 	    for i in "${udidTableKeysArray[@]}"
