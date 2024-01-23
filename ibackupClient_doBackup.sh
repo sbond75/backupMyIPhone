@@ -83,7 +83,7 @@ function doBackup() {
 	# fi
     else
 	# Local disk to use
-	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath and then transfer to server."
+	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
 	destFull="$config__localDiskPath/${userFolderName}"
 
 	# Mount if needed
@@ -91,8 +91,9 @@ function doBackup() {
 	if [ ! -z "$config__localDisk" ]; then # (optional)
 	    #mountpoint "$config__localDisk" || { echo "Error: backup destination drive not mounted. Exiting."; exit 1; }
 	    local failed=0 # assume 0
-	    # If "$config__localDisk" isn't a mountpoint, use sudo to make disk directory; then mount it
-	    mountpoint "$config__localDisk" || { madeDiskMount=1 ; echo "[ibackupClient] Mounting $config__localDisk from $config__localDiskDevice" && sudo mkdir -p "$config__localDisk" && sudo mount "$config__localDiskDevice" "$config_localDisk" ; } || { echo "Error: failed to mount backup destination drive. Not backing up this device for now."; failed=1; }
+	    mountpoint "$config__localDisk" || {
+		# Use sudo to make disk directory; then mount it
+		madeDiskMount=1 ; echo "[ibackupClient] Mounting $config__localDisk from $config__localDiskDevice" && sudo mkdir -p "$config__localDisk" && sudo mount "$config__localDiskDevice" "$config_localDisk" ; } || { echo "Error: failed to mount backup destination drive. Not backing up this device for now."; failed=1; }
 	    if [ "$failed" == "1" ]; then
 		return
 	    fi
