@@ -112,7 +112,8 @@ function doBackup() {
 	# Download backup from server first
 	echo "[ibackupClient] Downloading server backup contents for $username to $destFull..."
 	localDir="$destFull"
-	remoteDir="."
+	#remoteDir="."
+	remoteDir="$config__drive/home/$userFolderName/@iosBackups"
 	lftp -e "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
@@ -226,7 +227,8 @@ function doBackup() {
 	# Need to transfer backup to server now
 	echo "[ibackupClient] Beginning transfer of backup to server for $username to $destFull..."
 	localDir="$destFull"
-	remoteDir="."
+	#remoteDir="."
+	remoteDir="$config__drive/home/$userFolderName/@iosBackups"
 	# https://stackoverflow.com/questions/5245968/syntax-for-using-lftp-to-synchronize-local-folder-with-an-ftp-folder
 	# lftp -f "
     # open $config__host
