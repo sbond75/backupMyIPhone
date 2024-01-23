@@ -36,7 +36,7 @@ set -e
 timedatectl
 
 ranWithTeeAlready="$1" # Internal use, leave empty
-firstTime="$2" # Set to 1 to enable backup encryption interactively
+firstTime="$2" # Set to 1 to pair and enable backup encryption interactively
 useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPath` from `config.sh` to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
 
 # Script setup #
@@ -249,6 +249,9 @@ bye
 	    fi
 
 	    if [ "$firstTime" == "1" ]; then
+		# Pair
+		idevicepair --udid "$deviceToConnectTo"
+
 		# Enable encryption
 		idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
 		local exitCode="$?"
