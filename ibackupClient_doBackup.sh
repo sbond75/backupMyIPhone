@@ -15,7 +15,7 @@ function doBackup() {
     if [ -z "$userFolderName" ]; then
 	echo "[ibackupClient] Empty name (possibly not found), not able to interface with this device."
 	#continue
-	exit
+	return
     fi
     # Now we know which user this backup should go under.
 
@@ -26,12 +26,12 @@ function doBackup() {
     if [ "$didBackup" == "2" ]; then
 	echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
 	#continue
-	exit
+	return
     elif [ "$didBackup" == "1" ]; then
 	local till="$(python3 -c "from sys import argv; print(float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours
 	echo "[ibackupClient] Already backed up device ${udid} today (next backup is in at least $till hour(s)). Not backing up now."
 	#continue
-	exit
+	return
     else # Assume it is "0" meaning not backed up yet
 	local since="$(python3 -c "from sys import argv; print(-float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours (and negate the input seconds)
 	echo "[ibackupClient] Preparing to back up device ${udid} now (last backup was $since hour(s) ago)."
@@ -101,6 +101,19 @@ function doBackup() {
     if [ "$firstTime" == "1" ]; then
 	# Pair
 	idevicepair --udid "$deviceToConnectTo" pair
+	local exitCode="$?"
+	local i=2
+	while [ "$exitCode" != "0" ]; do	    
+	    # Delay to prevent it not being found
+	    #local sl=2
+	    local sl=8
+	    echo "[ibackupClient] Sleeping for $sl seconds..."
+	    sleep $sl
+
+	    echo "[ibackupClient] Retrying pair for $deviceToConnectTo after failing with exit code $exitCode (attempt $i)"
+	    idevicepair --udid "$deviceToConnectTo" pair
+	    i=$((i+1))
+	done
 
 	# Enable encryption
 	idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
@@ -114,7 +127,8 @@ function doBackup() {
 	    # Unmount that user
 	    unmountUser "$mountPoint"
 
-	    continue
+	    #continue
+	    return
 	fi
 	# Optional (if a password wasn't set)
 	read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
