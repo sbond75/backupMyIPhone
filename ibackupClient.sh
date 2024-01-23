@@ -63,7 +63,7 @@ fi
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackupClient] Running with tee to logfile $logfile"
-    bash "$0" "$logfile" "$firstTime" 2>&1 | tee_with_timestamps "$logfile"
+    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
 # #
