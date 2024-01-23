@@ -13,8 +13,9 @@ function doBackup() {
     local userFolderName=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$udid" 1)
     echo "[ibackupClient] User folder name: $userFolderName"
     if [ -z "$userFolderName" ]; then
-	echo "Empty name (possibly not found), not able to interface with this device."
-	continue
+	echo "[ibackupClient] Empty name (possibly not found), not able to interface with this device."
+	#continue
+	exit
     fi
     # Now we know which user this backup should go under.
 
@@ -24,11 +25,13 @@ function doBackup() {
     local didBackup=$(wasBackedUp_ "$udid" "$now")
     if [ "$didBackup" == "2" ]; then
 	echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
-	continue
+	#continue
+	exit
     elif [ "$didBackup" == "1" ]; then
 	local till="$(python3 -c "from sys import argv; print(float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours
 	echo "[ibackupClient] Already backed up device ${udid} today (next backup is in at least $till hour(s)). Not backing up now."
-	continue
+	#continue
+	exit
     else # Assume it is "0" meaning not backed up yet
 	local since="$(python3 -c "from sys import argv; print(-float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours (and negate the input seconds)
 	echo "[ibackupClient] Preparing to back up device ${udid} now (last backup was $since hour(s) ago)."

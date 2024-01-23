@@ -100,7 +100,7 @@ END_HEREDOC
 	    echo "[ibackupClient] Device found: $udid"
 	    # Add dash at the 8th position of the udid string ( https://www.unix.com/shell-programming-and-scripting/149658-insert-character-particular-position.html )
 	    udid="$(echo "$udid" | sed 's/./&-/8')"
-	    udid=udid bash ibackupClient_doBackup.sh & # Spawn background process
+	    udid="$udid" bash ibackupClient_doBackup.sh & # Spawn background process
 	fi
 
 	set -e
