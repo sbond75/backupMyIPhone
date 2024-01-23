@@ -129,7 +129,7 @@ END_HEREDOC
 		continue
 	    fi
 
-	    udid="$udid" bash ibackupClient_doBackup.sh & # Spawn background process
+	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" bash ibackupClient_doBackup.sh & # Spawn background process
 	    #source ibackupClient_doBackup.sh
 
 	    # Save background process's PID
