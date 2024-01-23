@@ -110,7 +110,7 @@ function doBackup() {
 	fi
 
 	# Download backup from server first
-	echo "[ibackupClient] Downloading server backup contents..."
+	echo "[ibackupClient] Downloading server backup contents for $username to $destFull..."
 	localDir="$destFull"
 	remoteDir="."
 	lftp -e "
@@ -124,7 +124,7 @@ function doBackup() {
     bye
     "
 	exitCode="$?"
-	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
+	echo "[ibackupClient] Finished transfer of backup from server with exit code ${exitCode}."
 	set +e
     fi
 
@@ -224,7 +224,7 @@ function doBackup() {
 
     if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Need to transfer backup to server now
-	echo "[ibackupClient] Beginning transfer of backup to server..."
+	echo "[ibackupClient] Beginning transfer of backup to server for $username to $destFull..."
 	localDir="$destFull"
 	remoteDir="."
 	# https://stackoverflow.com/questions/5245968/syntax-for-using-lftp-to-synchronize-local-folder-with-an-ftp-folder
