@@ -99,7 +99,7 @@ function doBackup() {
 	echo "[ibackupClient] Downloading server backup contents..."
 	localDir="$destFull"
 	remoteDir="."
-	lftp -d -f "
+	lftp -f "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
@@ -222,7 +222,8 @@ function doBackup() {
     # bye
     # "
 	# The key: `--reverse` here goes from "Local directory to FTP server directory":
-	lftp -d -f "
+	# (Tip: to turn on debug output, put `debug` as the first command below:)
+	lftp -f "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
