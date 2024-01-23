@@ -81,7 +81,11 @@ if [ "$username_script" != "$moi" ]; then
     getfacl "$scriptDir"
 
     # Make a fifo that will persist after this script is run, and allow this script to access it when run later as the `iosbackup_server` user:
-    mkfifo "$tcp_fifo"
+    if [ -p "$tcp_fifo" ]; then # pipe exists already
+	:
+    else
+	mkfifo "$tcp_fifo"
+    fi
     setfacl -m u:iosbackup_server:rw "$tcp_fifo"
     # Verify for reference:
     getfacl "$tcp_fifo"

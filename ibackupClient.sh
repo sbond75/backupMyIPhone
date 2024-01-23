@@ -37,7 +37,7 @@ timedatectl
 
 ranWithTeeAlready="$1" # Internal use, leave empty
 firstTime="$2" # Set to 1 to enable backup encryption interactively
-useLocalDiskThenTransfer="$3" # Optional; set to a path to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
+useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPath` from `config.sh` to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
 
 # Script setup #
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
@@ -195,7 +195,7 @@ END_HEREDOC
 	    if [ ! -e "$mountPoint" ]; then
 		mkdir "$mountPoint"
 	    fi
-	    if [ -z "$useLocalDiskThenTransfer" ]; then
+	    if [ "$useLocalDiskThenTransfer" != "1" ]; then
 		# Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
 		# Also note that it will only run the trap handler *after* the currently executing function in bash finishes. So if `sleep 30` is currently running and you press ctrl-c`, bash will only respond after the `sleep 30` command finishes ( https://unix.stackexchange.com/questions/387847/bash-script-doesnt-see-sighup )
 		#local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
@@ -226,8 +226,8 @@ END_HEREDOC
 		destFull="$dest/${userFolderName}_ftp"
 	    else
 		# Local disk to use
-		echo "[ibackupClient] After downloading server contents, will back up to local location $useLocalDiskThenTransfer and then transfer to server."
-		destFull="$useLocalDiskThenTransfer/${userFolderName}"
+		echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath and then transfer to server."
+		destFull="$config__localDiskPath/${userFolderName}"
 		mkdir -p "$destFull"
 
 		# Download backup from server first
@@ -316,7 +316,7 @@ bye
 	    local exitCode="$?"
 	    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
 
-	    if [ "$exitCode" == "0" ] && [ ! -z "$useLocalDiskThenTransfer" ]; then
+	    if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
 		# Need to transfer backup to server now
 		echo "[ibackupClient] Beginning transfer of backup to server..."
 		localDir="$destFull"
@@ -354,7 +354,7 @@ bye
 		echo "[ibackupClient] Told server backup is done unsuccessfully."
 	    fi
 
-	    if [ -z "$useLocalDiskThenTransfer" ]; then
+	    if [ "$useLocalDiskThenTransfer" != "1" ]; then
 		# Clear trap to original item (to unmount)
 		trap "$oldTrap" $signals
 
