@@ -250,7 +250,7 @@ bye
 
 	    if [ "$firstTime" == "1" ]; then
 		# Pair
-		idevicepair --udid "$deviceToConnectTo"
+		idevicepair --udid "$deviceToConnectTo" pair
 
 		# Enable encryption
 		idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
