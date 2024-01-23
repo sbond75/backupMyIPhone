@@ -112,6 +112,7 @@ function doBackup() {
 
 	    echo "[ibackupClient] Retrying pair for $deviceToConnectTo after failing with exit code $exitCode (attempt $i)"
 	    idevicepair --udid "$deviceToConnectTo" pair
+	    exitCode="$?"
 	    i=$((i+1))
 	done
 
