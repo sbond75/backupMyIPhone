@@ -108,7 +108,7 @@ function doBackup() {
     lcd $localDir
     mirror --continue --delete --verbose $remoteDir $localDir
     bye
-    " "$config__host"
+    "
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
 	set +e
@@ -232,7 +232,7 @@ function doBackup() {
     lcd $localDir
     mirror --continue --reverse --delete --verbose $localDir $remoteDir
     bye
-    " "$config__host"
+    "
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
     fi
