@@ -61,8 +61,9 @@ makeEntry "$username"
 
 5. Setup the server further by running this: `./ibackupServer.sh` (run as any user with `sudo` permissions since `sudo` will be used within the script).
 6. Run this command on the server to start the backup server: `sudo -E su --preserve-environment iosbackup_server ./ibackupServer.sh`
-7. Run this command on the client to start listening for iOS devices to be plugged into usbmuxd on the client via USB: `./ibackupClient.sh` (you will be prompted for sudo to run usbmuxd with)
-8. Finished -- when devices are plugged in, they will be backed up.
+7. For first-time setup of one or more devices that get plugged in (pairing and encryption enabling), run `./ibackupClient.sh '' 1 $useLocalDiskThenTransfer`, where `useLocalDiskThenTransfer` should be set to 1 if you want to store the backup locally and then transfer it to the server with lftp automatically rather than using the default method of using a curlftpfs mount. You will be prompted for `sudo` inputs while using this mode and a device gets plugged in. You can Ctrl-C after initial backup is performed with this mode, then do the below step.
+8. Run this command on the client to start listening for iOS devices to be plugged into usbmuxd on the client via USB: `./ibackupClient.sh` (you will be prompted for sudo to run usbmuxd with). If you want to use the local disk to store the backup until it is finished, then transfer it to the server rather than using curlftpfs, use `./ibackupClient.sh '' '' 1` (as described in the previous step).
+9. Finished -- when devices are plugged in, they will be backed up.
 
 ## Tools
 

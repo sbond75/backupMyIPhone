@@ -196,9 +196,27 @@ function doBackup() {
 	done
 
 	# Enable encryption
-	idevicebackup2 --udid "$deviceToConnectTo" -i encryption on
+	forceSuccess=0 # assume 0
+	function processOutput() {
+	while read data; do
+	    echo "${data}"
+
+	    local regex=$(
+cat <<'END_HEREDOC'
+^ERROR: Backup encryption is already enabled\. Aborting\.$
+END_HEREDOC
+)
+	    if [[ $data =~ $regex ]]; then
+		# Consider it a success still
+		forceSuccess=1
+	    else
+		:
+	    fi
+	done
+	}
+	idevicebackup2 --udid "$deviceToConnectTo" -i encryption on | processOutput
 	local exitCode="$?"
-	if [ "$exitCode" != "0" ]; then
+	if [ "$exitCode" != "0" ] && [ "$forceSuccess" == "0" ]; then
 	    echo "[ibackupClient] Enabling encryption failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
 	    if [ "$useLocalDiskThenTransfer" != "1" ]; then
@@ -212,28 +230,30 @@ function doBackup() {
 	    #continue
 	    return
 	fi
-	# Optional (if a password wasn't set)
-	read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
-	if [[ ! $REPLY =~ ^[Yy]$ ]]
-	then
-	    idevicebackup2 --udid "$deviceToConnectTo" -i changepw
-	    local exitCode="$?"
-	    if [ "$exitCode" != "0" ]; then
-		echo "[ibackupClient] Setting backup password failed with exit code $exitCode. Skipping this backup until device is reconnected."
+	if [ "$exitCode" == "0" ] && [ "$forceSuccess" == "0" ]; then # i.e. if *just* enabled encryption
+	    # Optional (if a password wasn't set)
+	    read -p "Enable or change backup password (needed to get Health data like steps, WiFi settings, call history, etc. ( https://support.apple.com/en-us/HT205220 )) (y/n)? " -r
+	    if [[ ! $REPLY =~ ^[Yy]$ ]]
+	    then
+		idevicebackup2 --udid "$deviceToConnectTo" -i changepw
+		local exitCode="$?"
+		if [ "$exitCode" != "0" ]; then
+		    echo "[ibackupClient] Setting backup password failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
-		if [ "$useLocalDiskThenTransfer" != "1" ]; then
-		    # Clear trap
-		    trap - $signals
+		    if [ "$useLocalDiskThenTransfer" != "1" ]; then
+			# Clear trap
+			trap - $signals
 
-		    # Unmount that user
-		    unmountUser "$mountPoint"
+			# Unmount that user
+			unmountUser "$mountPoint"
+		    fi
+
+		    #continue
+		    return
 		fi
-
-		#continue
-		return
+	    else
+		:
 	    fi
-	else
-	    :
 	fi
 	firstTime=0 # Already enabled from now on
 
@@ -258,7 +278,7 @@ function doBackup() {
 
     if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Need to transfer backup to server now
-	echo "[ibackupClient] Beginning transfer of backup to server for $username to $destFull..."
+	echo "[ibackupClient] Beginning transfer of backup to server for $username from $destFull..."
 	localDir="$destFull"
 	remoteDir="."
 	#remoteDir="$config__drive/home/$userFolderName/@iosBackups"
