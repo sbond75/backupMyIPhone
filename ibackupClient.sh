@@ -108,7 +108,7 @@ if [ "$indicateOnLED" == "1" ]; then
     echo 0 > "$led1"
     # Trap for resetting led1 to normal when this script exits
     oldTrap="echo \"[ibackupClient] Resetting led1 to normal\" ; echo input > \"$ledTrigger1\"" # default is `input` which indicates power ( https://mlagerberg.gitbooks.io/raspberry-pi/content/5.2-leds.html )
-    trap "$oldTrap" SIGINT SIGTERM EXIT CHLD
+    trap "$oldTrap" SIGINT SIGTERM EXIT
 fi
 
 # Prepare PID tables #
@@ -127,6 +127,8 @@ done
 # https://stackoverflow.com/questions/39239379/add-timestamp-to-teed-output-but-not-original-output
 # Usage: `echo "test" | parseOutput`
 function parseOutput () {
+    trap "$oldTrap" SIGINT SIGTERM EXIT
+
     # https://stackoverflow.com/questions/1167746/how-to-assign-a-heredoc-value-to-a-variable-in-bash : "Making sure to delimit starting END_HEREDOC with single-quotes. This will prevent the content of the heredoc from being expanded, so dont-execute-this [something like `$(dont-execute-this)` within the heredoc contents] will not be executed."
     local regex=$(
 cat <<'END_HEREDOC'
