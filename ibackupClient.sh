@@ -38,6 +38,11 @@ timedatectl
 ranWithTeeAlready="$1" # Internal use, leave empty
 firstTime="$2" # Set to 1 to pair and enable backup encryption interactively
 useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPath` from `config.sh` to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
+downloadFromServerFirst="$4" # Optional; set to `0` to not download the existing server files from the server first.
+
+if [ -z "$downloadFromServerFirst" ]; then
+    downloadFromServerFirst=1
+fi
 
 # Script setup #
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
@@ -63,7 +68,7 @@ fi
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackupClient] Running with tee to logfile $logfile"
-    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" 2>&1 | tee_with_timestamps "$logfile"
+    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" "$downloadFromServerFirst" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
 # #
@@ -129,7 +134,7 @@ END_HEREDOC
 		continue
 	    fi
 
-	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" bash ibackupClient_doBackup.sh & # Spawn background process
+	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" downloadFromServerFirst="$downloadFromServerFirst" bash ibackupClient_doBackup.sh & # Spawn background process
 	    #source ibackupClient_doBackup.sh
 
 	    # Save background process's PID

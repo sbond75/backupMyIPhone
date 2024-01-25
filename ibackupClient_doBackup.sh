@@ -153,11 +153,12 @@ function doBackup() {
 	    return
 	fi
 
+	if [ "$downloadFromServerFirst" == "1" ]; then
 	# Download backup from server first
 	echo "[ibackupClient] Downloading server backup contents for $username to $destFull..."
 	localDir="$destFull"
 	remoteDir="."
-	#remoteDir="$config__drive/home/$userFolderName/@iosBackups"
+	#remoteDir="$config__drive/home/$userFolderName/@iosBackups" # we use this instead of `.` in case the start backup command is slow to respond..
 	lftp -e "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
@@ -170,6 +171,9 @@ function doBackup() {
     "
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup from server with exit code ${exitCode}."
+	else
+	    echo "[ibackupClient] Skipping transfer of backup from server due to command-line config."
+	fi
 	set +e
     fi
 
