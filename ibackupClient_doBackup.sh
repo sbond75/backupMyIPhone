@@ -35,6 +35,64 @@ function serverCmd_startBackup() {
     serverCmd_startBackup_retval=0
 }
 
+# LED indicator stuff #
+# (`led` and `ledTrigger` variables are from `ibackupClient_common.sh`.)
+
+addedLEDTrap=0 # 0 if not, 1 if did add it
+
+function resetToDefault_LED() {
+    if [ ! -z "$indicateOnLED" ]; then
+	echo mmc0 > "$ledTrigger"
+    fi
+}
+
+function installLEDTrap() {
+    if [ "$addedLEDTrap" == "0" ]; then
+	# Trap to reset LED to default
+	local signals='EXIT'
+	trap "resetToDefault_LED ; $oldTrap" $signals
+
+	addedLEDTrap=1
+    fi
+}
+
+function preStartingBackup_LED() {
+    local oldTrap="$1"
+
+    if [ ! -z "$indicateOnLED" ]; then
+	# Blink the LED
+	{ while true; do echo 0 > "$led" && sleep 0.5 && echo 1 > "$led" ; done } &
+
+	# Trap to reset LED to default
+	installLEDTrap
+    fi
+}
+
+function startingBackup_LED() {
+    local oldTrap="$1"
+
+    if [ ! -z "$indicateOnLED" ]; then
+	# Solid LED to indicate backing up
+	echo 1 > "$led"
+
+	# Trap to reset LED to default
+	installLEDTrap
+    fi
+}
+
+function finishedBackup_LED() {
+    local oldTrap="$1"
+
+    if [ ! -z "$indicateOnLED" ]; then
+	# Turn off LED to indicate finished backup
+	echo 0 > "$led"
+
+	# Trap to reset LED to default
+	installLEDTrap
+    fi
+}
+# #
+
 function doBackup() {
     # # Delay to prevent it not being found
     # #local sl=2
@@ -61,9 +119,9 @@ function doBackup() {
 	echo "[ibackupClient] UDID $udid is unknown. Not backing up this device."
 	#continue
 	return
-    elif [ "$didBackup" == "1" ]; then
+    elif [ "$didBackup" == "s" ] || [ "$didBackup" == "f" ]; then # started or finished
 	local till="$(python3 -c "from sys import argv; print(float(argv[1]) / 3600)" "$wasBackedUp__timeTillNextBackup")" # Convert seconds to hours
-	echo "[ibackupClient] Already backed up device ${udid} today (next backup is in at least $till hour(s)). Not backing up now."
+	echo "[ibackupClient] Already backed up device ${udid} today (status $didBackup) (next backup is in at least $till hour(s)). Not backing up now."
 	#continue
 	return
     else # Assume it is "0" meaning not backed up yet
@@ -71,6 +129,9 @@ function doBackup() {
 	echo "[ibackupClient] Preparing to back up device ${udid} now (last backup was $since hour(s) ago)."
     fi
     local deviceToConnectTo="$udid"
+
+    # Show the pre-starting backup status on the LED (assuming raspberry pi)
+    preStartingBackup_LED ''
 
     # Mount fuse filesystem for server's vsftpd to use
     local username="${userFolderName}"'_ftp'
@@ -163,12 +224,14 @@ function doBackup() {
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
+    set xfer:timeout 60
+    set net:timeout 60
     open $config__host
     user $username $password
     lcd $localDir
     mirror --continue --delete --verbose $remoteDir $localDir
     bye
-    "
+    " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup from server with exit code ${exitCode}."
 	else
@@ -271,6 +334,8 @@ END_HEREDOC
 
     # Perform the backup:
     echo "[ibackupClient] Starting backup."
+    # Show the starting backup status on the LED (assuming raspberry pi)
+    startingBackup_LED "$oldTrap"
     # FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls (at the top of this `function parseOutput ()` function) aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
     idevicebackup2 --udid "$deviceToConnectTo" backup "$destFull"
     local exitCode="$?"
@@ -296,12 +361,14 @@ END_HEREDOC
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
     set ssl:check-hostname false
+    set xfer:timeout 60
+    set net:timeout 60
     open $config__host
     user $username $password
     lcd $localDir
     mirror --continue --reverse --delete --verbose $localDir $remoteDir
     bye
-    "
+    " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
     fi
@@ -330,12 +397,15 @@ END_HEREDOC
     # Save backup success status
     echo "[ibackupClient] Setting backup status as backed up for device $udid of user ${userFolderName}."
     local now="$(date +%s)"
-    setWasBackedUp_ "$udid" 1 "$now" # for side effects only; then we do the below in a subshell:
-    local found=$(setWasBackedUp_ "$udid" 1 "$now")
+    setWasBackedUp_ "$udid" f "$now" # for side effects only; then we do the below in a subshell:
+    local found=$(setWasBackedUp_ "$udid" f "$now")
     if [ "$found" == "2" ]; then
 	# Not found, error
 	echo "[ibackupClient] Couldn't mark UDID $udid as completed. Ignoring error..."
     fi
+
+    # Show the finished status on the LED (assuming raspberry pi)
+    finishedBackup_LED ''
 }
 
 doBackup

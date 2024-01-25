@@ -74,6 +74,7 @@ function wasBackedUp_() {
 		local past="${wasBackedUp_timesFinished[index]}"
 		if [ "$past" == "" ]; then
 		    # Null time; consider this as original status
+		    wasBackedUp__timeTillNextBackup=2147483647 # backup could be in-progress, so time until next backup is indeterminate (only when the backup is finished do we say the next backup can happen after `inc` time below)
 		    echo "$res"
 		fi
 		local inc=$((86400 / 2)) # Seconds in a day divided by 2

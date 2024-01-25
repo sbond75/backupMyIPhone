@@ -190,12 +190,12 @@ finishBackup() {
 
     # Check some preconditions
     local started=$(wasBackedUp_ "$udid")
-    if [ "$started" != "1" ]; then
+    if [ "$started" != "s" ]; then
 	local uns=
 	if [ "$unsuccessful" == 1 ]; then
 	    uns="Unsuccessful"
 	fi
-	echo "[ibackupServer] Backup is not currently started; can't finishBackup${uns}. Ignoring this command."
+	echo "[ibackupServer] Backup is not currently started (status is $started); can't finishBackup${uns}. Ignoring this command."
 	return
     fi
 
