@@ -65,4 +65,7 @@ function unmountUser() {
 # LED file paths based on https://forums.raspberrypi.com/viewtopic.php?t=12530
 led="/sys/class/leds/led0/brightness" # led0 is the green one; led1 is the red one
 ledTrigger="/sys/class/leds/led0/trigger" # can reset LED to default blinking condition by echoing `mmc0` to this file
+
+led1="/sys/class/leds/led1/brightness"
+ledTrigger1="/sys/class/leds/led1/trigger"
 # #

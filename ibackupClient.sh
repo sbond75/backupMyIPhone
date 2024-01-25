@@ -83,6 +83,7 @@ fi
 source ibackupClient_common.sh
 
 # Prepare LED permissions if needed
+oldTrap=
 if [ "$indicateOnLED" == "1" ]; then
     # Check if the LED file is not writable by this script's user with `! -w`:
     if [ ! -w "$led" ]; then
@@ -93,6 +94,21 @@ if [ "$indicateOnLED" == "1" ]; then
 	echo "[ibackupClient] Running chown $USER $ledTrigger"
 	sudo chown "$USER" "$ledTrigger"
     fi
+
+    if [ ! -w "$led1" ]; then
+	echo "[ibackupClient] Running chown $USER $led1"
+	sudo chown "$USER" "$led1"
+    fi
+    if [ ! -w "$ledTrigger1" ]; then
+	echo "[ibackupClient] Running chown $USER $ledTrigger1"
+	sudo chown "$USER" "$ledTrigger1"
+    fi
+
+    # Indicate the program is running in general by turning off led1
+    echo 0 > "$led1"
+    # Trap for resetting led1 to normal when this script exits
+    oldTrap="echo \"[ibackupClient] Resetting led1 to normal\" ; echo mmc0 > \"$ledTrigger1\""
+    trap "$oldTrap" SIGINT SIGTERM EXIT
 fi
 
 # Prepare PID tables #
@@ -198,7 +214,7 @@ END_HEREDOC
 	    # When the subprocess terminates, we want to be notified:
 	    trap myhandler CHLD
 	    # When this script terminates, we want to stop the subprocesses:
-	    trap 'kill $(jobs -p)' SIGINT SIGTERM EXIT # https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
+	    trap 'kill $(jobs -p) ; $oldTrap' SIGINT SIGTERM EXIT # https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
 
 	    local found=0 # assume 0
 	    for i in "${udidTableKeysArray[@]}"

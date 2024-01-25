@@ -50,7 +50,7 @@ function installLEDTrap() {
     if [ "$addedLEDTrap" == "0" ]; then
 	# Trap to reset LED to default
 	local signals='EXIT'
-	trap "resetToDefault_LED ; $oldTrap" $signals
+	trap "echo \"[ibackupClient] Resetting led to normal\" ; resetToDefault_LED ; $oldTrap" $signals
 
 	addedLEDTrap=1
     fi
