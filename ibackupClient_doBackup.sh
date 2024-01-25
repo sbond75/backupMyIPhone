@@ -1,6 +1,40 @@
 # Grab functions and config
 source ibackupClient_common.sh
 
+serverCmd_startBackup_retval=0 # read from this after calling the below function; if it is 1 it was unsuccessful.
+function serverCmd_startBackup() {
+    local signals="$1"
+    local oldTrap="$2"
+
+    if [ ! -z "$signals" ]; then
+	# "Stop backup" but unsuccessfully on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
+	trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1 '"$udid"' ; '"$oldTrap" $signals # Add a new trap to the existing one without overwriting it
+	#trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
+	# #
+    fi
+    # Prepare the server for backup:
+    echo "[ibackupClient] Preparing server for backup..."
+    serverCmd "startBackup" 0 "$udid"
+    local exitCode="$?"
+    if [ "$exitCode" != "0" ]; then
+	echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+	if [ "$useLocalDiskThenTransfer" != "1" ]; then
+	    # Clear trap
+	    trap - $signals
+
+	    # Unmount that user
+	    unmountUser "$mountPoint"
+	fi
+
+	#continue
+	serverCmd_startBackup_retval=1
+	return
+    fi
+    echo "[ibackupClient] Prepared server for backup."
+    serverCmd_startBackup_retval=0
+}
+
 function doBackup() {
     # # Delay to prevent it not being found
     # #local sl=2
@@ -109,11 +143,21 @@ function doBackup() {
 	    mkdir -p "$destFull"
 	fi
 
+	# Prepare to download the backup from the server first
+	# Technically `remoteDir=.` is used further a few lines below (it used to be commented out) and this directly below getting sent to the server is what prepares the home folder /home/userNameHere_ftp to be a bind mount to the actual path. This is instead of `remoteDir=`[the actual path].
+	local signals='EXIT'
+	local oldTrap=''
+	serverCmd_startBackup "$signals" "$oldTrap"
+	if [ "$serverCmd_startBackup_retval" == "1" ]; then
+	    # Failed
+	    return
+	fi
+
 	# Download backup from server first
 	echo "[ibackupClient] Downloading server backup contents for $username to $destFull..."
 	localDir="$destFull"
-	#remoteDir="."
-	remoteDir="$config__drive/home/$userFolderName/@iosBackups"
+	remoteDir="."
+	#remoteDir="$config__drive/home/$userFolderName/@iosBackups"
 	lftp -e "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
@@ -192,29 +236,14 @@ function doBackup() {
 	set +e
     fi
 
-    # "Stop backup" but unsuccessfully on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
-    trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1 '"$udid"' ; '"$oldTrap" $signals # Add a new trap to the existing one without overwriting it
-    #trap 'echo "trap worked 2"; serverCmd "finishBackupUnsuccessful" 1' INT EXIT
-    # #
-    # Prepare the server for backup:
-    echo "[ibackupClient] Preparing server for backup..."
-    serverCmd "startBackup" 0 "$udid"
-    local exitCode="$?"
-    if [ "$exitCode" != "0" ]; then
-	echo "[ibackupClient] Preparing server for backup failed with exit code $exitCode. Skipping this backup until device is reconnected."
-
-	if [ "$useLocalDiskThenTransfer" != "1" ]; then
-	    # Clear trap
-	    trap - $signals
-
-	    # Unmount that user
-	    unmountUser "$mountPoint"
+    # Start backup if needed
+    if [ "$useLocalDiskThenTransfer" != "1" ]; then
+	serverCmd_startBackup "$signals" "$oldTrap"
+	if [ "$serverCmd_startBackup_retval" == "1" ]; then
+	    # Failed
+	    return
 	fi
-
-	#continue
-	return
     fi
-    echo "[ibackupClient] Prepared server for backup."
 
     # Perform the backup:
     echo "[ibackupClient] Starting backup."
@@ -227,8 +256,8 @@ function doBackup() {
 	# Need to transfer backup to server now
 	echo "[ibackupClient] Beginning transfer of backup to server for $username to $destFull..."
 	localDir="$destFull"
-	#remoteDir="."
-	remoteDir="$config__drive/home/$userFolderName/@iosBackups"
+	remoteDir="."
+	#remoteDir="$config__drive/home/$userFolderName/@iosBackups"
 	# https://stackoverflow.com/questions/5245968/syntax-for-using-lftp-to-synchronize-local-folder-with-an-ftp-folder
 	# lftp -f "
     # open $config__host
