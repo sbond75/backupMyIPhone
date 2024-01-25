@@ -89,6 +89,10 @@ if [ "$indicateOnLED" == "1" ]; then
 	echo "[ibackupClient] Running chown $USER $led"
 	sudo chown "$USER" "$led"
     fi
+    if [ ! -w "$ledTrigger" ]; then
+	echo "[ibackupClient] Running chown $USER $ledTrigger"
+	sudo chown "$USER" "$ledTrigger"
+    fi
 fi
 
 # Prepare PID tables #
