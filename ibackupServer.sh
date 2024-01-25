@@ -179,7 +179,7 @@ startBackup() {
 	# This is so useful: https://bindfs.org/docs/bindfs.1.html : "--map" : "Given a mapping user1/user2, all files owned by user1 are shown as owned by user2. When user2 creates files, they are chowned to user1 in the underlying directory. When files are chowned to user2, they are chowned to user1 in the underlying directory. Works similarly for groups."
 	sudo bindfs --map="$username"/"$username_ftp" "$backupsLocation" "/home/$username_ftp" # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 	#started=1
-	setWasBackedUp_ "$udid" 1
+	setWasBackedUp_ "$udid" s
 	echo "[ibackupServer] Started vsftpd for user $username_ftp with device UDID ${udid}."
     fi
 }
@@ -212,7 +212,7 @@ finishBackup() {
 
     # Backup is finished
     #started=0
-    setWasBackedUp_ "$udid" 0
+    setWasBackedUp_ "$udid" f
     echo "[ibackupServer] Stopped vsftpd for user $username_ftp with device UDID ${udid}."
 }
 
@@ -265,7 +265,7 @@ END_HEREDOC
 		local user="${BASH_REMATCH[1]}"
 		local udid="${BASH_REMATCH[2]}"
 		#started=1
-		setWasBackedUp_ "$udid" 1
+		setWasBackedUp_ "$udid" s
 		echo "[ibackupServer] Command processor recorded start for UDID $udid"
 	    else
 		local regex=$(

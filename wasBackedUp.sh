@@ -1,6 +1,6 @@
 # Make an array for all the devices' backup statuses (whether they were backed up today or not) per UDID
 wasBackedUp=()
-wasBackedUp_times=() # time strings for last backup, or "" for no backup at all yet
+wasBackedUp_timesFinished=() # time strings for last backup finished time, or "" for no backup at all yet
 # Nvm: this is for users, not UDIDs: #
 # source "$scriptDir/allConfiguredFTPUsers.sh" # Puts users into `users` array
 # for i in "${users[@]}"
@@ -48,8 +48,8 @@ readarray -t udidTableKeysArray <<< "$udidTableKeys" # This reads {a newline-del
 
 for i in "${udidTableKeysArray[@]}"
 do
-    wasBackedUp+=(0) # 0 for false
-    wasBackedUp_times+=("")
+    wasBackedUp+=(0) # 0 for false, "s" for started, "f" for finished
+    wasBackedUp_timesFinished+=("") # "" for "null" time
 done
 
 # Outputs #
@@ -63,7 +63,7 @@ function wasBackedUp_() {
 	if [ "$i" == "$udid" ]; then
 	    # Found it
 	    res="${wasBackedUp[index]}"
-	    if [ "$res" == "1" ]; then
+	    if [ "$res" == "s" ] || [ "$res" == "f" ]; then
 		# Check if this is too old
 		local now=
 		if [ -z "$2" ]; then
@@ -71,7 +71,11 @@ function wasBackedUp_() {
 		else
 		    now="$2"
 		fi
-		local past="${wasBackedUp_times[index]}"
+		local past="${wasBackedUp_timesFinished[index]}"
+		if [ "$past" == "" ]; then
+		    # Null time; consider this as original status
+		    echo "$res"
+		fi
 		local inc=$((86400 / 2)) # Seconds in a day divided by 2
 		local next=$(($past + $inc))
 		wasBackedUp__timeTillNextBackup=$(($next - $now))
@@ -109,8 +113,12 @@ function setWasBackedUp_() {
 	    else
 		now="$3"
 	    fi
-
-	    wasBackedUp_times[index]="$now"
+	    
+	    if [ "$setTo" == "f" ]; then
+		wasBackedUp_timesFinished[index]="$now"
+	    else
+		wasBackedUp_timesFinished[index]=""
+	    fi
 
 	    echo 1 # success
 	    return
