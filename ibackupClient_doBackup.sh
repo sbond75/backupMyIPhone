@@ -50,18 +50,21 @@ function installLEDTrap() {
     if [ "$addedLEDTrap" == "0" ]; then
 	# Trap to reset LED to default
 	local signals='EXIT'
-	trap "echo \"[ibackupClient] Resetting led to normal\" ; resetToDefault_LED ; $oldTrap" $signals
+	local stopBlink='if [ ! -z "$BLINK_JOB_PID" ]; then kill "$BLINK_JOB_PID" ; fi'
+	trap "echo \"[ibackupClient] Resetting led to normal\" ; $stopBlink ; resetToDefault_LED ; $oldTrap" $signals
 
 	addedLEDTrap=1
     fi
 }
 
+BLINK_JOB_PID=
 function preStartingBackup_LED() {
     local oldTrap="$1"
 
     if [ ! -z "$indicateOnLED" ]; then
 	# Blink the LED
 	{ while true; do echo 0 > "$led" && sleep 0.5 && echo 1 > "$led" ; done } &
+	BLINK_JOB_PID=$!
 
 	# Trap to reset LED to default
 	installLEDTrap
