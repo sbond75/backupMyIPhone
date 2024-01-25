@@ -228,7 +228,7 @@ runCommand() {
 
     if [ "$arg0" == "startBackup" ] && [ "$started" == "0" ]; then
 	startBackup "$arg1"
-    elif [ "$arg0" == "startBackup" ] && [ "$started" == "1" ]; then
+    elif [ "$arg0" == "startBackup" ] && [ "$started" == "s" ]; then
         echo "[ibackupServer] Backup is already \"started\", nothing to do. It must have been left on or something..."
     elif [ "$arg0" == "finishBackup" ]; then
 	finishBackup "$arg1"
