@@ -108,7 +108,7 @@ if [ "$indicateOnLED" == "1" ]; then
     echo 0 > "$led1"
     # Trap for resetting led1 to normal when this script exits
     oldTrap="echo \"[ibackupClient] Resetting led1 to normal\" ; echo input > \"$ledTrigger1\"" # default is `input` which indicates power ( https://mlagerberg.gitbooks.io/raspberry-pi/content/5.2-leds.html )
-    trap "$oldTrap" SIGINT SIGTERM EXIT
+    trap "$oldTrap" SIGINT SIGTERM EXIT CHLD
 fi
 
 # Prepare PID tables #
