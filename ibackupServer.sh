@@ -195,7 +195,7 @@ finishBackup() {
 	if [ "$unsuccessful" == 1 ]; then
 	    uns="Unsuccessful"
 	fi
-	echo "[ibackupServer] Backup is not currently started (status is $started); can't finishBackup${uns}. Ignoring this command."
+	echo "[ibackupServer] Backup for UDID $udid is not currently started (status is $started); can't finishBackup${uns}. Ignoring this command."
 	return
     fi
 

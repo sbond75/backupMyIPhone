@@ -19,7 +19,7 @@ function serverCmd() {
 	# Keep trying till it succeeds, since this is important:
 	local exitCode=1
 	while [ "$exitCode" != 0 ]; do
-	    serverCmd_impl "$1"
+	    serverCmd_impl "$1" "$udid"
 	    exitCode="$?"
 	    if [ "$exitCode" == "0" ]; then
 		break
