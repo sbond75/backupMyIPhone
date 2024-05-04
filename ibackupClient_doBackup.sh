@@ -223,6 +223,7 @@ function doBackup() {
 	localDir="$destFull"
 	remoteDir="."
 	#remoteDir="$config__drive/home/$userFolderName/@iosBackups" # we use this instead of `.` in case the start backup command is slow to respond..
+	if [ "$config__syncMethod" == "lftp" ]; then
 	lftp -e "
     set ftp:ssl-force true
     set ssl:ca-file $config__certPath
@@ -236,6 +237,11 @@ function doBackup() {
     bye
     " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
+	else
+	    # Use rsync from the curlftpfs mount to `$localDir`
+	    rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
+	    exitCode="$?"
+	fi
 	echo "[ibackupClient] Finished transfer of backup from server with exit code ${exitCode}."
 	else
 	    echo "[ibackupClient] Skipping transfer of backup from server due to command-line config."
@@ -350,6 +356,7 @@ END_HEREDOC
 	localDir="$destFull"
 	remoteDir="."
 	#remoteDir="$config__drive/home/$userFolderName/@iosBackups"
+	if [ "$config__syncMethod" == "lftp" ]; then
 	# https://stackoverflow.com/questions/5245968/syntax-for-using-lftp-to-synchronize-local-folder-with-an-ftp-folder
 	# lftp -f "
     # open $config__host
@@ -373,6 +380,11 @@ END_HEREDOC
     bye
     " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
+	else
+	    # Use rsync from `$localDir` to the curlftpfs mount
+	    rsync --sparse --archive --verbose --human-readable --progress "$localDir" "$mountPoint"
+	    exitCode="$?"
+	fi
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
     fi
 
