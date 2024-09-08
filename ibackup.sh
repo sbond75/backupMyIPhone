@@ -325,10 +325,14 @@ fi
 if [[ "$contents" == *"failed_with_too_many_attempts" ]] || [[ "$contents" == *"success" ]]; then
         echo "[ibackup] Backup for today exists; its status was ${contents}. (This status was found at ${CURDATE}.)"
         current_epoch=$(date +%s)
-        target_epoch=$(date -d "tomorrow 00:00:01" +%s)
+        target_epoch=$(date -d "$config__backupDailyTime" +%s)
         to_sleep=$(( $target_epoch - $current_epoch ))
-        echo "[ibackup] Sleeping for $to_sleep seconds (current epoch: $current_epoch)..."
-        sleep $to_sleep
+	if [ "$to_sleep" -gt 0 ]; then
+            echo "[ibackup] Sleeping for $to_sleep seconds (current epoch $current_epoch, target epoch $target_epoch)..."
+            sleep $to_sleep
+	else
+            echo "[ibackup] No need to sleep for $to_sleep seconds (current epoch $current_epoch, target epoch $target_epoch)."
+	fi
         #rm "$CURDATE"
 fi
 CURDATE="$successOrFailLogsBaseFolder/$(date +"%Y%m%d")_$username"

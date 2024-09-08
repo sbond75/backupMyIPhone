@@ -6,6 +6,9 @@ config__drive=/mnt/someMountPointHere
 # Port to use for btrbk_daemon.py. This can usually be left as the default provided here. This port will be open on the local machine only (not for other computers on the same local network to access)
 config__btrbk_daemon_port=8089
 
+# Daily time to perform the backup. This will be passed to the `date` command as the `-d` argument. Example values: 'tomorrow 00:00:01' to back up at 12:01 am every day (not recommended for devices newer than iOS 15 since these require passcode entry for every backup), 'tomorrow' to back up at the same time tomorrow as of the time now. Tip: don't use 'today' or it will be trying to back up until tomorrow (wasting resources in the process) since at most one backup can be made a day currently.
+config__backupDailyTime='tomorrow'
+
 # For remote backups, i.e. when run from a client (remotely transmitting a backup made from an iOS device connected to the "client" computer which is sent to a "server" computer running ibackupServer.sh) #
 # For remote backups: destination directory for the backup on the client
 config__clientDirectory=/home/pi/Projects/backupMyIPhone_clientDirectory
