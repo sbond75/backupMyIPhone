@@ -239,6 +239,7 @@ function doBackup() {
 	exitCode="$?"
 	else
 	    # Use rsync from the curlftpfs mount to `$localDir`
+	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
 	    rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
 	    exitCode="$?"
 	fi

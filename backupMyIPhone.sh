@@ -136,7 +136,8 @@ if [ "$continuous" == "1" ]; then
 			
 			source "$scriptDir/spawnUsbmuxd.sh" # Spawn usbmuxd if noStart == 0
 		    fi
-		    sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" "$quietUsbmuxd"
+		    # Set `NIX_PATH` to an empty string to prevent errors like `error: getting status of /home/[...]/.nix-defexpr/channels: Permission denied`:
+		    NIX_PATH= sudo -E su --preserve-environment "$username" -- ./ibackup.sh "$deviceToConnectTo" "$firstTime" "$dryRun" "$port" '' '' "$snapshotBeforeBackup" "$useUSB" "$nixShellToUseForUSB" "$quietUsbmuxd"
 		fi
 	    fi
 	else
