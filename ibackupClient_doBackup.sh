@@ -187,7 +187,7 @@ function doBackup() {
 	# fi
     #else
     fi
-    if [ "$useLocalDiskThenTransfer" == "1" ]
+    if [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Local disk to use
 	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
 	destFull="$config__localDiskPath/${userFolderName}"
