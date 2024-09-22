@@ -32,5 +32,5 @@ config__localDiskPath="$config__localDisk/iOSBackups"
 config__localDiskDevice=/dev/disk/by-label/iOSBackupClient
 
 # For remote backups: syncing method. Supported values are "lftp" to use ftp syncing, or "rsync" to use curlftpfs mount folder syncing. "lftp" seems to have an issue where it hangs forever doing a bunch of file operations.
-config__syncMethod='curlftpfs'
+config__syncMethod='rsync'
 # #

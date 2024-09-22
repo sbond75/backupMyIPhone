@@ -177,6 +177,7 @@ startBackup() {
 	#mount --bind "$backupsLocation" "/home/$username_ftp"
 	# https://unix.stackexchange.com/questions/115377/mount-bind-other-user-as-myself -- bindfs ( https://bindfs.org/ ) allows you to change users albeit a bit slower than Linux kernel bind mounts(<--`mount --bind`):
 	# This is so useful: https://bindfs.org/docs/bindfs.1.html : "--map" : "Given a mapping user1/user2, all files owned by user1 are shown as owned by user2. When user2 creates files, they are chowned to user1 in the underlying directory. When files are chowned to user2, they are chowned to user1 in the underlying directory. Works similarly for groups."
+	echo sudo bindfs --map="$username"/"$username_ftp" "$backupsLocation" "/home/$username_ftp"
 	sudo bindfs --map="$username"/"$username_ftp" "$backupsLocation" "/home/$username_ftp" # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 	#started=1
 	setWasBackedUp_ "$udid" s

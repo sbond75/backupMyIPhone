@@ -145,7 +145,7 @@ function doBackup() {
 	mkdir "$mountPoint"
 	set +e
     fi
-    if [ "$useLocalDiskThenTransfer" != "1" ]; then
+    if [ "$useLocalDiskThenTransfer" != "1" ] || [ "$config__syncMethod" == "rsync" ]; then
 	# Unmount on ctrl-c or exit if any (in preparation for ideally running this handler *after* the below command) #
 	# Also note that it will only run the trap handler *after* the currently executing function in bash finishes. So if `sleep 30` is currently running and you press ctrl-c`, bash will only respond after the `sleep 30` command finishes ( https://unix.stackexchange.com/questions/387847/bash-script-doesnt-see-sighup )
 	#local oldTrapEnd='kill -s INT "$$" # report to the parent that we have indeed been interrupted' # https://unix.stackexchange.com/questions/386836/why-is-doing-an-exit-130-is-not-the-same-as-dying-of-sigint
@@ -159,11 +159,12 @@ function doBackup() {
 	# curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
 
 	# https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
+	echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
 	curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
 	# By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	# Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 
-	local exitCode="$?"
+	local exitCode="$?" # FIXME: this probably won't work since it is run in the background with `&` above..
 	if [ "$exitCode" != "0" ]; then
 	    echo "[ibackupClient] Mounting FTP filesystem failed with exit code $exitCode. Skipping this backup until device is reconnected."
 
