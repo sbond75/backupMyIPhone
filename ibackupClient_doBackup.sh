@@ -179,6 +179,22 @@ function doBackup() {
 	    #continue
 	    return
 	fi
+
+	# Wait for mount
+	while :
+	do
+	    echo "[ibackupClient] Waiting for FTP filesystem to mount..."
+	    mountpoint "$mountPoint"
+	    local exitCode="$?"
+	    if [ "$exitCode" == "0" ]; then
+		break
+	    fi
+
+	    local sl=4
+	    echo "[ibackupClient] Sleeping for $sl seconds..."
+	    sleep $sl
+	done
+	
 	echo "[ibackupClient] Mounted FTP filesystem."
 	destFull="$dest/${userFolderName}_ftp"
 	# if [ "$firstTime" == "1" ]; then
@@ -250,7 +266,7 @@ function doBackup() {
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
 	    rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
 	    exitCode="$?"
-	    bash
+	    #bash
 	fi
 	echo "[ibackupClient] Finished transfer of backup from server with exit code ${exitCode}."
 	else
