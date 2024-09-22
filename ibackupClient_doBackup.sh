@@ -185,7 +185,9 @@ function doBackup() {
 	#     # Use sudo to make destination directory
 	#     sudo mkdir -p "$destFull"
 	# fi
-    else
+    #else
+    fi
+    if [ "$useLocalDiskThenTransfer" == "1" ]
 	# Local disk to use
 	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
 	destFull="$config__localDiskPath/${userFolderName}"
