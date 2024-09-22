@@ -23,7 +23,12 @@ function serverCmd_startBackup() {
 	    # Clear trap
 	    trap - $signals
 
+	    # Grab username from udid to lookup table ignoring dashes
+	    local userFolderName=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$udid" 1)
+	    local username="${userFolderName}"'_ftp'
+
 	    # Unmount that user
+	    local mountPoint="${config__clientDirectory}/$username"
 	    unmountUser "$mountPoint"
 	fi
 
