@@ -23,12 +23,12 @@ function serverCmd_startBackup() {
 	    # Clear trap
 	    trap - $signals
 
-	    # Grab username from udid to lookup table ignoring dashes
-	    local userFolderName=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$udid" 1)
-	    local username="${userFolderName}"'_ftp'
+	    # # Grab username from udid to lookup table ignoring dashes
+	    # local userFolderName=$(python3 "$scriptDir/udidToFolderLookupTable.py" "$udid" 1)
+	    # local username="${userFolderName}"'_ftp'
 
 	    # Unmount that user
-	    local mountPoint="${config__clientDirectory}/$username"
+	    # local mountPoint="${config__clientDirectory}/$username"
 	    unmountUser "$mountPoint"
 	fi
 
@@ -142,9 +142,9 @@ function doBackup() {
     preStartingBackup_LED ''
 
     # Mount fuse filesystem for server's vsftpd to use
-    local username="${userFolderName}"'_ftp'
+    username="${userFolderName}"'_ftp'
     local password="$(eval echo '$config__'"$username")"
-    local mountPoint="${config__clientDirectory}/$username"
+    mountPoint="${config__clientDirectory}/$username"
     if [ ! -e "$mountPoint" ] && [ "$useLocalDiskThenTransfer" != "1" ]; then
 	set -e
 	mkdir "$mountPoint"
