@@ -10,4 +10,5 @@ if [ "$exitCode" != "0" ]; then
 fi
 
 # Setup and install usbmuxd, idevicebackup2, etc. imperatively:
-bash "$scriptDir/compile_libimobiledevice_imperatively.sh"
+bash "$scriptDir/install_libimobiledevice_deps.sh"
+bash "$scriptDir/compile_libimobiledevice_imperatively.sh" 0

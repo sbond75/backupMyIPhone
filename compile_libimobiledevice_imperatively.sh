@@ -3,16 +3,13 @@
 
 set -ex
 
-if [ ! -e iphone_libs ]; then
-    sudo apt-get update
-    sudo apt-get -y upgrade
-    sudo apt-get -y install vim tmux git build-essential libxml2-dev python2.7 python2.7-dev fuse libtool autoconf libusb-1.0-0-dev libfuse-dev
+installDepsWithApt="$1" # Optional; 0 to not install them. Default is to install them.
 
-    # https://github.com/libimobiledevice/libimobiledevice
-    sudo apt-get -y install \
-	 doxygen \
-	 cython \
-	 libssl-dev # Added to fix `error: OpenSSL support explicitly requested but OpenSSL could not be found`
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+if [ ! -e iphone_libs ]; then
+    if [ "$installDepsWithApt" != "0" ]; then
+	bash "$scriptDir/install_libimobiledevice_deps.sh"
+    fi
 
     mkdir iphone_libs && cd iphone_libs
 
