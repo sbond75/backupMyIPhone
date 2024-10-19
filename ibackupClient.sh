@@ -27,8 +27,12 @@
 # # Compile libimobiledevice (Nix doesn't seem to work on armv7l as of writing) :
 # bash compile_libimobiledevice_imperatively.sh
 
-if [ "$(whoami)" != "pi" ]; then
-    echo 'This script must be run as the `pi` user. Exiting.'
+# if [ "$(whoami)" != "pi" ]; then
+#     echo 'This script must be run as the `pi` user. Exiting.'
+#     exit 1
+# fi
+if [ "$(whoami)" == "root" ]; then
+    echo 'This script should ideally be run as a non-root user. Exiting.'
     exit 1
 fi
 
