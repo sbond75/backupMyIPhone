@@ -29,7 +29,7 @@ if [ -z "$(grep -F "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" /etc/bash.b
 fi
 
 if [ ! -e /usr/local/lib/libplist-2.0.a ]; then
-    cd libplist && ./autogen.sh && make && sudo make install && cd ..
+    cd libplist && ./autogen.sh --without-cython && make && sudo make install && cd ..
 fi
 if [ ! -e /usr/local/lib/libimobiledevice-glue-1.0.a ]; then
     cd libimobiledevice-glue && ./autogen.sh && make && sudo make install && cd ..
