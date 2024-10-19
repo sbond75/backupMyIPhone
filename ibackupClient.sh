@@ -4,6 +4,12 @@
 ##! nix-shell -i bash ./shell_new_libimobiledevice.nix
 
 # NOTE: For setup, run these commands on the client (assumed to be a Raspberry Pi -- tested on `Raspbian GNU/Linux 9.13 (stretch)` (armv7l architecture) on a `Raspberry Pi 3 Model B Rev 1.2`):
+scriptDir="$(dirname "${BASH_SOURCE[0]}")"
+if [ "$FIRST_TIME_PI" == 1 ]; then # can set this environment variable to run this
+    bash "$scriptDir/setupPi.sh"
+fi
+
+# ^ Or, check detailed info here:
 # (Set up SSH as needed, wpa_supplicant, etc.)
 # sudo apt update && sudo apt upgrade
 # # Nvm: sh <(curl -L https://nixos.org/nix/install) --daemon  # Installs nix
@@ -53,7 +59,6 @@ if [ -z "$downloadFromServerFirst" ]; then
 fi
 
 # Script setup #
-scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 source "$scriptDir/teeWithTimestamps.sh" # Sets `tee_with_timestamps` function
 
 # Grab config
