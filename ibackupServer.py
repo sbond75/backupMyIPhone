@@ -154,7 +154,7 @@ def process_command(st: GlobalState, command):
 def runCommandProcessor(st: GlobalState):
     # Listen for incoming connections and process commands
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('0.0.0.0', s.tcpPort))
+        s.bind(('0.0.0.0', st.tcpPort))
         s.listen()
         print(f"[ibackupServer] Listening on port {st.tcpPort}")
 
