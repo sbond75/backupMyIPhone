@@ -46,7 +46,7 @@ ranWithTeeAlready="$1" # Internal use, leave empty
 firstTime="$2" # Set to 1 to pair and enable backup encryption interactively
 useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPath` from `config.sh` to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
 downloadFromServerFirst="$4" # Optional; set to `0` to not download the existing server files from the server first.
-indicateOnLED="$5" # Optional; set to `1` to indicate backup status on the LED of this computer as a raspberry pi using `/sys/class/leds/led0/trigger`. If set to 1, this script will (at startup) check its permissions and adjust them to be owned by `pi` user if needed.
+indicateOnLED="$5" # Optional; set to `1` to indicate backup status on the LED of this computer as a raspberry pi using `/sys/class/leds/led0/trigger` (or `/sys/class/leds/PWR/trigger` on Linux 6.1 and up). If set to 1, this script will (at startup) check its permissions and adjust them to be owned by `pi` user if needed.
 
 if [ -z "$downloadFromServerFirst" ]; then
     downloadFromServerFirst=1

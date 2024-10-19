@@ -62,10 +62,20 @@ function unmountUser() {
 }
 
 # LED variables #
-# LED file paths based on https://forums.raspberrypi.com/viewtopic.php?t=12530
-led="/sys/class/leds/led0/brightness" # led0 is the green one; led1 is the red one
-ledTrigger="/sys/class/leds/led0/trigger" # can reset LED to default blinking condition by echoing `mmc0` to this file
+if [ -e "/sys/class/leds/led0/brightness" ]; then
+    # LED file paths based on https://forums.raspberrypi.com/viewtopic.php?t=12530
+    led="/sys/class/leds/led0/brightness" # led0 is the green one; led1 is the red one
+    ledTrigger="/sys/class/leds/led0/trigger" # can reset LED to default blinking condition by echoing `mmc0` to this file
 
-led1="/sys/class/leds/led1/brightness"
-ledTrigger1="/sys/class/leds/led1/trigger"
+    led1="/sys/class/leds/led1/brightness"
+    ledTrigger1="/sys/class/leds/led1/trigger"
+else
+    # Assume Linux 6.1 or greater
+    # https://github.com/MichaIng/DietPi/issues/6779
+    led="/sys/class/leds/ACT/brightness" # ACT is the green one; PWR is the red one
+    ledTrigger="/sys/class/leds/ACT/trigger"
+
+    led1="/sys/class/leds/PWR/brightness"
+    ledTrigger1="/sys/class/leds/PWR/trigger"
+fi
 # #
