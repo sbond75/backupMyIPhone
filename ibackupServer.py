@@ -85,6 +85,7 @@ def lookup_username(st: GlobalState, udid):
     # # Simulates the Python script that maps UDID to user
     # return subprocess.check_output(["python3", st.scriptDirPath("udidToFolderLookupTable.py"), udid]).decode().strip()
 
+    print("sys.path:", sys.path)
     import udidToFolderLookupTable
     return udidToFolderLookupTable.lookupTable[udid]
 
