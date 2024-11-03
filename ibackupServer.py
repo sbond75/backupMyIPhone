@@ -4,7 +4,7 @@
 import os
 import socket
 import subprocess
-#import sys
+import sys
 import re
 from shlex import quote
 
@@ -29,9 +29,9 @@ class GlobalState:
         self.destDrive = config_dict['config__drive']
         self.backupStatus = BackupStatus()
 
-        # # Add `scriptPath` to python import path:
-        # print("Inserting module path:", self.scriptPath)
-        # sys.path.insert(0, self.scriptPath)
+        # Add `scriptPath` to python import path:
+        print("Inserting module path:", self.scriptPath)
+        sys.path.insert(0, self.scriptPath)
 
         #sys.path.insert(0, '') # add current directory to python import path
 
