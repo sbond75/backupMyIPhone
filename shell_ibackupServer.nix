@@ -21,6 +21,6 @@ mkShell {
     which
 
     python3
-    sudo
+    #sudo
   ];
 }
