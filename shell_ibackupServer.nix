@@ -22,5 +22,6 @@ mkShell {
 
     python3
     #sudo
+    bash
   ];
 }
