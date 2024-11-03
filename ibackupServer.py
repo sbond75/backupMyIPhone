@@ -95,6 +95,13 @@ def lookup_username(st: GlobalState, udid):
     import udidToFolderLookupTable
     return udidToFolderLookupTable.lookupTable[udid]
 
+def runCmd(argList):
+    # Quote each argument to make it safe for shell execution
+    command_str = " ".join(quote(arg) for arg in argList)
+
+    # (`shell=True` is needed due to sudoers being used)
+    subprocess.run(command_str, shell=True, check=True)
+
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
     print(f"[ibackupServer] Opening vsftpd for user {username_ftp} with device UDID {udid}")
@@ -104,10 +111,10 @@ def start_backup(st: GlobalState, udid):
         st.backupStatus.set_was_backed_up(udid, "0")
     else:
         # Bind user directory with bindfs (requires sudo)
-        subprocess.run(["sudo"
-                        #, "bindfs"
-                        , bindfsPath
-                        , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"], check=True) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+        runCmd(["sudo"
+                #, "bindfs"
+                , bindfsPath
+                , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
         st.backupStatus.set_was_backed_up(udid, "s")
         print(f"[ibackupServer] Started vsftpd for user {username_ftp} with device UDID {udid}.")
 
@@ -125,10 +132,10 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
         make_snapshot(os.path.dirname(dest), username)
 
     # Unmount bindfs
-    subprocess.run(["sudo"
-                    #, "umount"
-                    , umountPath
-                    , f"/home/{username_ftp}"], check=True) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+    runCmd(["sudo"
+            #, "umount"
+            , umountPath
+            , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
     st.backupStatus.set_was_backed_up(udid, "f")
     print(f"[ibackupServer] Stopped vsftpd for user {username_ftp} with device UDID {udid}.")
 
