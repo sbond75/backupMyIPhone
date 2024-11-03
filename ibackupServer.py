@@ -4,7 +4,7 @@
 import os
 import socket
 import subprocess
-import sys
+#import sys
 import re
 from shlex import quote
 
@@ -33,7 +33,7 @@ class GlobalState:
         # print("Inserting module path:", self.scriptPath)
         # sys.path.insert(0, self.scriptPath)
 
-        sys.path.insert(0, '') # add current directory to python import path
+        #sys.path.insert(0, '') # add current directory to python import path
 
     def scriptDirPath(self, p):
         return os.path.join(self.scriptPath, p)
