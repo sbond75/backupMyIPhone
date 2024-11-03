@@ -43,8 +43,7 @@ Besides using one computer connected to an iOS device to perform a backup, there
    3. `sudo usermod -a -G iosbackup iosbackup_server`
 2. Perform the steps inside the comments of `ibackupClient.sh` on the client computer (tested on Raspberry Pi)
 3. Perform the steps inside the comments of `ibackupServer.sh` on the server computer (tested on NixOS)
-4. Run `sudo apt install bindfs` on the client
-5. On the client, in a similar method to the description of `/etc/sudoers` under the [Demo](##Demo) section above, add a line like the below (evaluate the code block below with bash first to process the echo commands, then put the output into sudoers) to your system's sudoers for each FTP user added to `config.sh` (users ending in `_ftp`; see `template/config.sh` for more info on the `config.sh` file if needed):
+4. On the server, in a similar method to the description of `/etc/sudoers` under the [Demo](##Demo) section above, add a line like the below (evaluate the code block below with bash first to process the echo commands, then put the output into sudoers) to your system's sudoers for each FTP user added to `config.sh` (users ending in `_ftp`; see `template/config.sh` for more info on the `config.sh` file if needed):
 ```
 username=userNameHere # Put your username here (without `_ftp`)
 
@@ -54,8 +53,8 @@ makeEntry() {
     backupsLocation="$config__drive/home/$username/@iosBackups"
 
     # WARNING: if `backupsLocation` or `username` contain spaces, it may cause a security issue; see https://unix.stackexchange.com/questions/279125/allow-user-to-run-a-command-with-arguments-which-contains-spaces/279142#279142
-    echo "iosbackup_server ALL=(root)NOPASSWD: `which bindfs`" --map="$username"/"${username}_ftp" "$backupsLocation" "/home/${username}_ftp"
-	echo "iosbackup_server ALL=(root)NOPASSWD: `which umount`" "/home/${username}_ftp"
+    echo "iosbackup_server ALL=(root)NOPASSWD: /nix/store/z4ywgk1yma7cnswrrcqqbh0z33lag35f-bindfs-1.15.1/bin/bindfs" --map="$username"/"${username}_ftp" "$backupsLocation" "/home/${username}_ftp"
+	echo "iosbackup_server ALL=(root)NOPASSWD: /nix/store/h48w2b4vj544w45ihzdv8h5djz2d95di-umount-util-linux-2.36.2/bin/umount" "/home/${username}_ftp"
 }
 
 makeEntry "$username"
