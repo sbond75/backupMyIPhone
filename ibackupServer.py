@@ -30,6 +30,7 @@ class GlobalState:
         self.backupStatus = BackupStatus()
 
         # Add `scriptPath` to python import path:
+        print("Inserting module path:", self.scriptPath)
         sys.path.insert(0, self.scriptPath)
 
     def scriptDirPath(self, p):
