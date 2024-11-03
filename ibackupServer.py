@@ -29,9 +29,11 @@ class GlobalState:
         self.destDrive = config_dict['config__drive']
         self.backupStatus = BackupStatus()
 
-        # Add `scriptPath` to python import path:
-        print("Inserting module path:", self.scriptPath)
-        sys.path.insert(0, self.scriptPath)
+        # # Add `scriptPath` to python import path:
+        # print("Inserting module path:", self.scriptPath)
+        # sys.path.insert(0, self.scriptPath)
+
+        sys.path.insert(0, '') # add current directory to python import path
 
     def scriptDirPath(self, p):
         return os.path.join(self.scriptPath, p)
@@ -85,7 +87,7 @@ def lookup_username(st: GlobalState, udid):
     # # Simulates the Python script that maps UDID to user
     # return subprocess.check_output(["python3", st.scriptDirPath("udidToFolderLookupTable.py"), udid]).decode().strip()
 
-    print("sys.path:", sys.path)
+    # print("sys.path:", sys.path)
     import udidToFolderLookupTable
     return udidToFolderLookupTable.lookupTable[udid]
 
