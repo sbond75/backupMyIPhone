@@ -107,7 +107,7 @@ def start_backup(st: GlobalState, udid):
         subprocess.run(["sudo"
                         #, "bindfs"
                         , bindfsPath
-                        , "--map", f"{username}/{username_ftp}", dest, f"/home/{username_ftp}"], check=True) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+                        , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"], check=True) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
         st.backupStatus.set_was_backed_up(udid, "s")
         print(f"[ibackupServer] Started vsftpd for user {username_ftp} with device UDID {udid}.")
 
