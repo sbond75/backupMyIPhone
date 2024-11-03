@@ -88,7 +88,7 @@ def lookup_username(st: GlobalState, udid):
     return udidToFolderLookupTable.lookupTable[udid]
 
 def start_backup(st: GlobalState, udid):
-    username, username_ftp, dest = get_vars(udid)
+    username, username_ftp, dest = get_vars(st, udid)
     print(f"[ibackupServer] Opening vsftpd for user {username_ftp} with device UDID {udid}")
 
     if not os.path.exists(dest):
