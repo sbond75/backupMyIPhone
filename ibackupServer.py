@@ -9,7 +9,7 @@ import re
 from shlex import quote
 
 class BackupStatus:
-    def __init(self):
+    def __init__(self):
         self.status = {}
 
     def set_was_backed_up(self, udid, status):
