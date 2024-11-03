@@ -12,3 +12,8 @@ fi
 # Setup and install usbmuxd, idevicebackup2, etc. imperatively:
 bash "$scriptDir/install_libimobiledevice_deps.sh"
 bash "$scriptDir/compile_libimobiledevice_imperatively.sh" 0
+
+# Make users and groups
+sudo useradd iosbackup_server
+sudo groupadd iosbackup
+sudo usermod -a -G iosbackup iosbackup_server
