@@ -166,7 +166,7 @@ def runCommandProcessor(st: GlobalState):
                 if not data:
                     break
                 command = data.decode('utf-8')
-                process_command(command)
+                process_command(st, command)
                 conn.sendall(b"Command processed.\n")
 # #
 
