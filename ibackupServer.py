@@ -9,8 +9,8 @@ import re
 from shlex import quote
 
 # Grab paths to stuff
-bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout
-umountPath = subprocess.run(["which", "umount"], capture_output=True, check=True, text=True).stdout
+bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
+umountPath = subprocess.run(["which", "umount"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 
 class BackupStatus:
     def __init__(self):
