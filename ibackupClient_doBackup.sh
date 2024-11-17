@@ -226,7 +226,7 @@ function doBackup() {
 	    # Use sudo to make destination directory
 	    sudo mkdir -p "$destFull"
 	    # Chown it
-	    sudo chown -R pi "$config__localDiskPath"
+	    sudo chown -R "$USER" "$config__localDiskPath"
 	else
 	    mkdir -p "$destFull"
 	fi
