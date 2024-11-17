@@ -12,6 +12,7 @@ import udidToFolderLookupTable
 # Grab paths to stuff
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 umountPath = subprocess.run(["which", "umount"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
+sudoPath = subprocess.run(["which", "sudo"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 
 class BackupStatus:
     def __init__(self):
@@ -96,8 +97,8 @@ def lookup_username(st: GlobalState, udid):
     return udidToFolderLookupTable.lookupTable[udid]
 
 def runCmd(argList):
-    # Quote each argument to make it safe for shell execution
-    command_str = " ".join(quote(arg) for arg in argList)
+    # # Quote each argument to make it safe for shell execution
+    # command_str = " ".join(quote(arg) for arg in argList)
 
     # (`shell=True` is needed due to sudoers being used)
     #return subprocess.run(command_str, shell=True, check=True)
@@ -117,7 +118,7 @@ def start_backup(st: GlobalState, udid):
         st.backupStatus.set_was_backed_up(udid, "0")
     else:
         # Bind user directory with bindfs (requires sudo)
-        runCmd(["sudo"
+        runCmd([sudoPath
                 #, "bindfs"
                 , bindfsPath
                 , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
@@ -138,7 +139,7 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
         make_snapshot(os.path.dirname(dest), username)
 
     # Unmount bindfs
-    runCmd(["sudo"
+    runCmd([sudoPath
             #, "umount"
             , umountPath
             , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
