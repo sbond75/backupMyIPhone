@@ -102,9 +102,11 @@ def runCmd(argList):
     # (`shell=True` is needed due to sudoers being used)
     #return subprocess.run(command_str, shell=True, check=True)
     
-    result = subprocess.run(command_str, shell=True, check=True, capture_output=True, text=True)
-    print(result.stdout, '|', result.stderr)
-    return result
+    #result = subprocess.run(command_str, shell=True, check=True, capture_output=True, text=True)
+    #print(result.stdout, '|', result.stderr)
+    #return result
+
+    return subprocess.run(argList, shell=False, check=True)
 
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
