@@ -97,6 +97,10 @@ def lookup_username(st: GlobalState, udid):
     return udidToFolderLookupTable.lookupTable[udid]
 
 def runCmd(argList):
+    print("Environment Variables:")
+    for key, value in os.environ.items():
+        print(f"{key}={value}")
+    
     # # Quote each argument to make it safe for shell execution
     # command_str = " ".join(quote(arg) for arg in argList)
 
