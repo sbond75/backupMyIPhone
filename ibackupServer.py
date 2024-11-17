@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 from shlex import quote
+import udidToFolderLookupTable
 
 # Grab paths to stuff
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
@@ -92,7 +93,6 @@ def lookup_username(st: GlobalState, udid):
     # return subprocess.check_output(["python3", st.scriptDirPath("udidToFolderLookupTable.py"), udid]).decode().strip()
 
     # print("sys.path:", sys.path)
-    import udidToFolderLookupTable
     return udidToFolderLookupTable.lookupTable[udid]
 
 def runCmd(argList):
@@ -100,7 +100,11 @@ def runCmd(argList):
     command_str = " ".join(quote(arg) for arg in argList)
 
     # (`shell=True` is needed due to sudoers being used)
-    return subprocess.run(command_str, shell=True, check=True)
+    #return subprocess.run(command_str, shell=True, check=True)
+    
+    result = subprocess.run(command_str, shell=True, check=True, capture_output=True, text=True)
+    print(result.stdout, '|', result.stderr)
+    return result
 
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
