@@ -224,7 +224,7 @@ function doBackup() {
         if [ "$exitCode" == "0" ]; then
 	    echo "[ibackupClient] $my_pid is still in the ps output. Must still be running."
 	    running=1
-	done
+	fi
 	if [ "$running" == 0 ]; then
 	    wait $my_pid
 	    my_status=$?
