@@ -175,7 +175,7 @@ function doBackup() {
 
 	# https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
 	echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
-	curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
+	withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
 	local curlftpfs_pid=$!
 	# By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	# Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
@@ -211,6 +211,32 @@ function doBackup() {
 	echo "[ibackupClient] Warming up FTP filesystem..."
 	output="$(ls -la "$mountPoint" 2>&1)"
 	echo "[ibackupClient] ls output: { $output }"
+
+	# Check if it was truly successful or if errors occurred:
+	sleep 1
+	local my_pid=$curlftpfs_pid
+	# https://stackoverflow.com/questions/1570262/get-exit-code-of-a-background-process
+	local running=0
+	while   ps | grep " $my_pid "     # might also need  | grep -v grep  here
+	do
+	    echo "[ibackupClient] $my_pid is still in the ps output. Must still be running."
+	    #sleep 3
+	    running=1
+	    break
+	done
+	if [ "$running" == 0 ]; then
+	    wait $my_pid
+	    my_status=$?
+	    local exitCode="$my_status"
+	    echo "[ibackupClient] Accessing FTP filesystem withOutputErrorChecking failed with exit code $exitCode. Skipping this backup until device is reconnected."
+
+	    # Clear trap
+	    trap - $signals
+
+	    #continue
+	    return
+	fi
+
 	echo "[ibackupClient] Warmed up FTP filesystem."
 
 	destFull="$dest/${userFolderName}_ftp"

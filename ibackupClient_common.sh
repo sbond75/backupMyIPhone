@@ -61,6 +61,10 @@ function unmountUser() {
     done
 }
 
+function withOutputErrorChecking() {
+    python3 "$scriptDir/runWithOutputErrorChecking.py" "$@"
+}
+
 # LED variables #
 if [ -e "/sys/class/leds/led0/brightness" ]; then
     # LED file paths based on https://forums.raspberrypi.com/viewtopic.php?t=12530
