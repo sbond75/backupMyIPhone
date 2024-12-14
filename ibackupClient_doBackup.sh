@@ -218,12 +218,12 @@ function doBackup() {
 	echo "[ibackupClient] Checking for curlftpfs withOutputErrorChecking PID ${my_pid}..."
 	# https://stackoverflow.com/questions/1570262/get-exit-code-of-a-background-process
 	local running=0
-	while   ps | grep " $my_pid "     # might also need  | grep -v grep  here
-	do
+	local res="$(ps | grep " $my_pid ")"     # might also need  | grep -v grep  here
+	local exitCode=$?
+	echo "[ibackupClient] ps result: $res"
+        if [ "$exitCode" == "0" ]; then
 	    echo "[ibackupClient] $my_pid is still in the ps output. Must still be running."
-	    #sleep 3
 	    running=1
-	    break
 	done
 	if [ "$running" == 0 ]; then
 	    wait $my_pid
