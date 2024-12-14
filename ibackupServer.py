@@ -13,6 +13,7 @@ import udidToFolderLookupTable
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 umountPath = subprocess.run(["which", "umount"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 sudoPath = subprocess.run(["which", "sudo"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
+mountpointPath = subprocess.run(["which", "mountpoint"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 
 class BackupStatus:
     def __init__(self):
@@ -97,9 +98,11 @@ def lookup_username(st: GlobalState, udid):
     return udidToFolderLookupTable.lookupTable[udid]
 
 def runCmd(argList):
-    print("Environment Variables:")
-    for key, value in os.environ.items():
-        print(f"{key}={value}")
+    print('[ibackupServer] Running command:', argList)
+
+    # print("Environment Variables:")
+    # for key, value in os.environ.items():
+    #     print(f"{key}={value}")
     
     # # Quote each argument to make it safe for shell execution
     # command_str = " ".join(quote(arg) for arg in argList)
@@ -113,6 +116,12 @@ def runCmd(argList):
 
     return subprocess.run(argList, shell=False, check=True)
 
+def unmount(username_ftp):
+    runCmd([sudoPath
+        #, "umount"
+        , umountPath
+        , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
     print(f"[ibackupServer] Opening vsftpd for user {username_ftp} with device UDID {udid}")
@@ -122,10 +131,26 @@ def start_backup(st: GlobalState, udid):
         st.backupStatus.set_was_backed_up(udid, "0")
     else:
         # Bind user directory with bindfs (requires sudo)
-        runCmd([sudoPath
-                #, "bindfs"
-                , bindfsPath
-                , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+        retry = True
+        tries=0
+        while retry:
+            try:
+                tries += 1
+                runCmd([sudoPath
+                        #, "bindfs"
+                        , bindfsPath
+                        , f"--map={username}/{username_ftp}", dest, f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+                retry = False
+            except subprocess.CalledProcessError:
+                if tries > 1:
+                    print('[ibackupServer] Failed to run bindfs again, will raise exception')
+                    raise
+
+                # Exit code was non-zero, try unmounting first:
+                print('[ibackupServer] Failed to run bindfs, will try unmounting first')
+                unmount(username_ftp)
+                retry = True
+
         st.backupStatus.set_was_backed_up(udid, "s")
         print(f"[ibackupServer] Started vsftpd for user {username_ftp} with device UDID {udid}.")
 
@@ -143,10 +168,7 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
         make_snapshot(os.path.dirname(dest), username)
 
     # Unmount bindfs
-    runCmd([sudoPath
-            #, "umount"
-            , umountPath
-            , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+    unmount(username_ftp)
     st.backupStatus.set_was_backed_up(udid, "f")
     print(f"[ibackupServer] Stopped vsftpd for user {username_ftp} with device UDID {udid}.")
 
