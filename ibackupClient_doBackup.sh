@@ -163,9 +163,20 @@ function doBackup() {
 	# export -f urlencode # https://superuser.com/questions/319538/aliases-in-subshell-child-process : "If you want them to be inherited to sub-shells, use functions instead. Those can be exported to the environment (export -f), and sub-shells will then have those functions defined."
 	# curlftpfs -o "sslv3,cacert=${config__certPath},no_verify_hostname" "$username:$(urlencode "$password")@$config__host" "$mountPoint" # [fixed using urlencode]FIXME: if password has commas it will probably break this `user=` stuff
 
+	# Unmount it if it exists already
+	mountpoint "$mountPoint"
+	local exitCode="$?"
+	if [ "$exitCode" == "0" ]; then # the mountpoint exists
+	    echo "[ibackupClient] Unmounting old mount ${mountPoint}..."
+	    unmountUser "$mountPoint"
+	    echo "[ibackupClient] Unmounted old mount ${mountPoint}."
+	    echo "[ibackupClient] Re-mounting mountpoint ${mountPoint}..."
+	fi
+
 	# https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
 	echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
 	curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
+	local curlftpfs_pid=$!
 	# By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	# Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 
