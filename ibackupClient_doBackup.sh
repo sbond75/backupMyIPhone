@@ -215,6 +215,7 @@ function doBackup() {
 	# Check if it was truly successful or if errors occurred:
 	sleep 1
 	local my_pid=$curlftpfs_pid
+	echo "[ibackupClient] Checking for curlftpfs withOutputErrorChecking PID ${my_pid}..."
 	# https://stackoverflow.com/questions/1570262/get-exit-code-of-a-background-process
 	local running=0
 	while   ps | grep " $my_pid "     # might also need  | grep -v grep  here
