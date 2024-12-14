@@ -138,7 +138,7 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
             print(f"[ibackupServer] Backup for UDID {udid} is not currently started; can't finishBackup.")
         return
 
-    username, username_ftp, dest = get_vars(udid)
+    username, username_ftp, dest = get_vars(st, udid)
     if not unsuccessful:
         make_snapshot(os.path.dirname(dest), username)
 
