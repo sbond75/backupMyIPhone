@@ -196,6 +196,12 @@ function doBackup() {
 	done
 	
 	echo "[ibackupClient] Mounted FTP filesystem."
+
+	echo "[ibackupClient] Warming up FTP filesystem..."
+	output="$(ls -la "$mountPoint" 2>&1)"
+	echo "[ibackupClient] ls output: { $output }"
+	echo "[ibackupClient] Warmed up FTP filesystem."
+
 	destFull="$dest/${userFolderName}_ftp"
 	# if [ "$firstTime" == "1" ]; then
 	#     # Use sudo to make destination directory
