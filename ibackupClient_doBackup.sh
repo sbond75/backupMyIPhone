@@ -173,6 +173,9 @@ function doBackup() {
 	    echo "[ibackupClient] Re-mounting mountpoint ${mountPoint}..."
 	fi
 
+	# Also remove fuse mount to prevent https://stackoverflow.com/questions/24966676/transport-endpoint-is-not-connected/29400722#29400722
+	fusermount -u "$mountPoint"
+
 	# https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
 	echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
 	withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff

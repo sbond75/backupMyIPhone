@@ -17,6 +17,7 @@ mkShell {
     bindfs
     umount
     acl
+    util-linux # for `mountpoint` command
 
     which
 
