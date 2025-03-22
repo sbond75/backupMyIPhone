@@ -141,6 +141,16 @@ function doBackup() {
     # Show the pre-starting backup status on the LED (assuming raspberry pi)
     preStartingBackup_LED ''
 
+    # Prepare to download the backup from the server first
+    # Technically `remoteDir=.` is used further a few lines below (it used to be commented out) and this directly below getting sent to the server is what prepares the home folder /home/userNameHere_ftp to be a bind mount to the actual path. This is instead of `remoteDir=`[the actual path].
+    local signals='EXIT'
+    local oldTrap=''
+    serverCmd_startBackup "$signals" "$oldTrap"
+    if [ "$serverCmd_startBackup_retval" == "1" ]; then
+	# Failed
+	return
+    fi
+
     # Mount fuse filesystem for server's vsftpd to use
     username="${userFolderName}"'_ftp'
     local password="$(eval echo '$config__'"$username")"
@@ -276,16 +286,6 @@ function doBackup() {
 	    sudo chown -R "$USER" "$config__localDiskPath"
 	else
 	    mkdir -p "$destFull"
-	fi
-
-	# Prepare to download the backup from the server first
-	# Technically `remoteDir=.` is used further a few lines below (it used to be commented out) and this directly below getting sent to the server is what prepares the home folder /home/userNameHere_ftp to be a bind mount to the actual path. This is instead of `remoteDir=`[the actual path].
-	local signals='EXIT'
-	local oldTrap=''
-	serverCmd_startBackup "$signals" "$oldTrap"
-	if [ "$serverCmd_startBackup_retval" == "1" ]; then
-	    # Failed
-	    return
 	fi
 
 	if [ "$downloadFromServerFirst" == "1" ]; then
