@@ -230,6 +230,8 @@ def process_command(st: GlobalState, command):
         print(f"[ibackupServer] Unknown command: {command}")
 
 def shutdown(st: GlobalState, unsuccessful):
+    sys.stdout.flush()
+    sys.stderr.flush()
     print("Begin clean shutdown:")
     for udid, username in udidToFolderLookupTable.lookupTable.items():
         finish_backup(st, udid, unsuccessful)
