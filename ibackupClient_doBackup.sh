@@ -455,8 +455,8 @@ END_HEREDOC
 	exitCode="$?"
 	else
 	    # Use rsync from `$localDir` to the curlftpfs mount
-	    echo rsync --sparse --archive --verbose --human-readable --progress "$localDir" "$mountPoint"
-	    rsync --sparse --archive --verbose --human-readable --progress "$localDir" "$mountPoint"
+	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms "$localDir" "$mountPoint"
+	    rsync --sparse --archive --verbose --human-readable --progress --no-perms "$localDir" "$mountPoint"
 	    exitCode="$?"
 	fi
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
