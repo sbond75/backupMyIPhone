@@ -426,7 +426,7 @@ END_HEREDOC
 	echo "[ibackupClient] Backup finished with exit code ${exitCode}."
     else
 	echo '[ibackupClient] Backup skipped due to `skipActualBackup` being 1.'
-    end
+    fi
 
     if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Need to transfer backup to server now
