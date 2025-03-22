@@ -53,6 +53,7 @@ firstTime="$2" # Set to 1 to pair and enable backup encryption interactively
 useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPath` from `config.sh` to save backup to this path instead of to an FTP-mounted folder. Then, once the backup is finished, `lftp` is used to transfer the files to the server.
 downloadFromServerFirst="$4" # Optional; set to `0` to not download the existing server files from the server first.
 indicateOnLED="$5" # Optional; set to `1` to indicate backup status on the LED of this computer as a raspberry pi using `/sys/class/leds/led0/trigger` (or `/sys/class/leds/PWR/trigger` on Linux 6.1 and up). If set to 1, this script will (at startup) check its permissions and adjust them to be owned by `pi` user if needed.
+skipActualBackup="$6" # Optional; set to `1` to do everything except the actual backup. This can include transfering the existing local disk to the server, which would normally be done post-backup.
 
 if [ -z "$downloadFromServerFirst" ]; then
     downloadFromServerFirst=1
@@ -81,7 +82,7 @@ fi
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackupClient] Running with tee to logfile $logfile"
-    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" "$downloadFromServerFirst" "$indicateOnLED" 2>&1 | tee_with_timestamps "$logfile"
+    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" "$downloadFromServerFirst" "$indicateOnLED" "$skipActualBackup" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
 # #
@@ -178,7 +179,7 @@ END_HEREDOC
 		continue
 	    fi
 
-	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" downloadFromServerFirst="$downloadFromServerFirst" bash ibackupClient_doBackup.sh & # Spawn background process
+	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" downloadFromServerFirst="$downloadFromServerFirst" skipActualBackup="$skipActualBackup" bash ibackupClient_doBackup.sh & # Spawn background process
 	    #source ibackupClient_doBackup.sh
 
 	    # Save background process's PID

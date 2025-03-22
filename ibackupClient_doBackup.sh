@@ -414,14 +414,19 @@ END_HEREDOC
 	fi
     fi
 
-    # Perform the backup:
-    echo "[ibackupClient] Starting backup."
-    # Show the starting backup status on the LED (assuming raspberry pi)
-    startingBackup_LED "$oldTrap"
-    # FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls (at the top of this `function parseOutput ()` function) aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
-    idevicebackup2 --udid "$deviceToConnectTo" backup "$destFull"
-    local exitCode="$?"
-    echo "[ibackupClient] Backup finished with exit code ${exitCode}."
+    # Perform the backup depending on an argument given:
+    if [ "$skipActualBackup" != "1" ]; then
+	# Perform the backup:
+	echo "[ibackupClient] Starting backup."
+	# Show the starting backup status on the LED (assuming raspberry pi)
+	startingBackup_LED "$oldTrap"
+	# FIXME: all the output from usbmuxd may fill up the pipe, since our `read data` calls (at the top of this `function parseOutput ()` function) aren't being done *until* this area of the while loop finishes (maybe run all this below in the background with `&`?)
+	idevicebackup2 --udid "$deviceToConnectTo" backup "$destFull"
+	local exitCode="$?"
+	echo "[ibackupClient] Backup finished with exit code ${exitCode}."
+    else
+	echo '[ibackupClient] Backup skipped due to `skipActualBackup` being 1.'
+    end
 
     if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Need to transfer backup to server now
