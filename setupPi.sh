@@ -1,6 +1,7 @@
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 
 sudo apt install -y rsync smbclient cifs-utils lftp curlftpfs
+sudo apt install -y rclone # if using rclone instead of curlftpfs
 
 # Try `netcat` but it might be renamed now to `netcat-traditional` or `netcat-openbsd`.
 sudo apt install -y netcat

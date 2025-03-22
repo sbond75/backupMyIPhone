@@ -254,6 +254,7 @@ def runCommandProcessor(st: GlobalState):
                         break
                     command = data.decode('utf-8')
                     process_command(st, command)
+                    print("Command processed.")
                     conn.sendall(b"Command processed.\n")
         unsuccessful = False
     except:
