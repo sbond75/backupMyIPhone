@@ -198,7 +198,7 @@ function doBackup() {
 	    echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --ftp-implicit --vfs-cache-mode writes '&'
 	    rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --ftp-implicit --vfs-cache-mode writes &
 	    local curlftpfs_pid=$!
-	end
+	fi
 
 	local exitCode="$?" # FIXME: this probably won't work since it is run in the background with `&` above..
 	if [ "$exitCode" != "0" ]; then
