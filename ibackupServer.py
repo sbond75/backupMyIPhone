@@ -126,7 +126,8 @@ def runCmd(argList):
 def unmount(username_ftp):
     runCmd([sudoPath
         #, "umount"
-        , umountPath, "-f"
+        #, umountPath, "-f"
+        , umountPath
         , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
 def start_backup(st: GlobalState, udid):
@@ -188,7 +189,7 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
 
     username, username_ftp, dest = get_vars(st, udid)
     if not unsuccessful:
-        make_snapshot(os.path.dirname(dest), username)
+        make_snapshot(st, os.path.dirname(dest), username)
 
     # Unmount bindfs
     unmount(username_ftp)
@@ -228,12 +229,13 @@ def process_command(st: GlobalState, command):
     else:
         print(f"[ibackupServer] Unknown command: {command}")
 
-def shutdown(st: GlobalState):
+def shutdown(st: GlobalState, unsuccessful):
     print("Begin clean shutdown:")
     for udid, username in udidToFolderLookupTable.lookupTable.items():
-        finish_backup(st, udid, False)
+        finish_backup(st, udid, unsuccessful)
 
 def runCommandProcessor(st: GlobalState):
+    unsuccessful = True # Assume True
     try:
         # Listen for incoming connections and process commands
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -251,6 +253,7 @@ def runCommandProcessor(st: GlobalState):
                     command = data.decode('utf-8')
                     process_command(st, command)
                     conn.sendall(b"Command processed.\n")
+        unsuccessful = False
     except:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -258,7 +261,7 @@ def runCommandProcessor(st: GlobalState):
         sys.stdout.flush()
         traceback.print_exc()
     finally:
-        shutdown(st)
+        shutdown(st, unsuccessful)
 # #
 
 def run():
