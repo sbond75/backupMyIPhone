@@ -8,6 +8,7 @@ import sys
 import re
 from shlex import quote
 import udidToFolderLookupTable
+import traceback
 
 # Grab paths to stuff
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
@@ -221,23 +222,34 @@ def process_command(st: GlobalState, command):
     else:
         print(f"[ibackupServer] Unknown command: {command}")
 
-def runCommandProcessor(st: GlobalState):
-    # Listen for incoming connections and process commands
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('0.0.0.0', st.tcpPort))
-        s.listen()
-        print(f"[ibackupServer] Listening on port {st.tcpPort}")
+def shutdown(st: GlobalState):
+    print("Begin clean shutdown:")
+    for udid, username in udidToFolderLookupTable.lookupTable.items():
+        finish_backup(st, udid, False)
 
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                print(f"Connected by {addr}")
-                data = conn.recv(1024)
-                if not data:
-                    break
-                command = data.decode('utf-8')
-                process_command(st, command)
-                conn.sendall(b"Command processed.\n")
+def runCommandProcessor(st: GlobalState):
+    try:
+        # Listen for incoming connections and process commands
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('0.0.0.0', st.tcpPort))
+            s.listen()
+            print(f"[ibackupServer] Listening on port {st.tcpPort}")
+
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    print(f"Connected by {addr}")
+                    data = conn.recv(1024)
+                    if not data:
+                        break
+                    command = data.decode('utf-8')
+                    process_command(st, command)
+                    conn.sendall(b"Command processed.\n")
+    except e:
+        print("Command processor is handling the following exception by cleanly shutting down:")
+        traceback.print_exc()
+    finally:
+        shutdown(st)
 # #
 
 def run():
