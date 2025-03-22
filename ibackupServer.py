@@ -119,7 +119,7 @@ def runCmd(argList):
 def unmount(username_ftp):
     runCmd([sudoPath
         #, "umount"
-        , umountPath
+        , umountPath, "-f"
         , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
 def start_backup(st: GlobalState, udid):

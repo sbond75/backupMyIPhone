@@ -55,6 +55,7 @@ makeEntry() {
     # WARNING: if `backupsLocation` or `username` contain spaces, it may cause a security issue; see https://unix.stackexchange.com/questions/279125/allow-user-to-run-a-command-with-arguments-which-contains-spaces/279142#279142
     echo "iosbackup_server ALL=(root)NOPASSWD: /nix/store/z4ywgk1yma7cnswrrcqqbh0z33lag35f-bindfs-1.15.1/bin/bindfs" --map="$username"/"${username}_ftp" "$backupsLocation" "/home/${username}_ftp"
 	echo "iosbackup_server ALL=(root)NOPASSWD: /nix/store/h48w2b4vj544w45ihzdv8h5djz2d95di-umount-util-linux-2.36.2/bin/umount" "/home/${username}_ftp"
+	echo "iosbackup_server ALL=(root)NOPASSWD: /nix/store/8c1g2fz306ybkykga524x6c5861i80dj-util-linux-2.36.2-bin/bin/mountpoint /home/${username}_ftp"
 }
 
 makeEntry "$username"
