@@ -194,9 +194,16 @@ function doBackup() {
 	    # By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 	elif [ "$config__syncMethod" == "rsync_rclone" ]; then
+	    # Make rclone config:
+	    export RCLONE_CONFIG="$scriptDir/rclone.conf"
+	    rclone config create myremote sftp env_auth=true "pass=$password" "user=$username" "host=$config__host" "key_file=$config__certPath" --non-interactive
+	    rclone config update myremote env_auth=true "pass=$password" "user=$username" "host=$config__host" "key_file=$config__certPath" --non-interactive
 	    # rclone mount:
-	    echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
-	    rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes &
+	    #echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
+	    #rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes &
+	    echo rclone mount myremote:/ "$mountPoint" --vfs-cache-mode writes &
+	    rclone mount myremote:/ "$mountPoint" --vfs-cache-mode writes &
+	    # TODO: Try using `rclone sync` or `rclone copy` instead of rsync.
 	    local curlftpfs_pid=$!
 	fi
 
