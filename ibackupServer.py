@@ -14,6 +14,8 @@ import traceback
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 umountPath = subprocess.run(["which", "umount"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 sudoPath = subprocess.run(["which", "sudo"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
+if sudoPath.startswith('/nix/store/'): # NixOS-specific hack
+    sudoPath = "/run/wrappers/bin/sudo"
 mountpointPath = subprocess.run(["which", "mountpoint"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
 
 class BackupStatus:
@@ -246,7 +248,10 @@ def runCommandProcessor(st: GlobalState):
                     process_command(st, command)
                     conn.sendall(b"Command processed.\n")
     except:
+        sys.stdout.flush()
+        sys.stderr.flush()
         print("Command processor is handling the following exception by cleanly shutting down:")
+        sys.stdout.flush()
         traceback.print_exc()
     finally:
         shutdown(st)
