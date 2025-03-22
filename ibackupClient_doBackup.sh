@@ -196,9 +196,9 @@ function doBackup() {
 	elif [ "$config__syncMethod" == "rsync_rclone" ]; then
 	    # Make rclone config:
 	    export RCLONE_CONFIG="$scriptDir/rclone.conf"
-	    rclone config create "myremote_$username" ftp env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" --non-interactive
-	    echo rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" --non-interactive
-	    rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" --non-interactive
+	    rclone config create "myremote_$username" ftp env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=990" --non-interactive
+	    echo rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=990" --non-interactive
+	    rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=990" --non-interactive
 	    # rclone mount:
 	    #echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
 	    #rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes &
