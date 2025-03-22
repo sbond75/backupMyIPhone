@@ -117,7 +117,7 @@ def runCmd(argList):
     #print(result.stdout, '|', result.stderr)
     #return result
 
-    return subprocess.run(argList, shell=False, check=True)
+    return subprocess.run(argList, stdout=sys.stdout, stderr=sys.stderr, shell=False, check=True)
 
 def unmount(username_ftp):
     runCmd([sudoPath
