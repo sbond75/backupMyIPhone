@@ -195,8 +195,8 @@ function doBackup() {
 	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 	elif [ "$config__syncMethod" == "rsync_rclone" ]; then
 	    # rclone mount:
-	    echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --ftp-implicit --vfs-cache-mode writes '&'
-	    rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --ftp-implicit --vfs-cache-mode writes &
+	    echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
+	    rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes &
 	    local curlftpfs_pid=$!
 	fi
 
