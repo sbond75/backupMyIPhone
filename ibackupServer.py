@@ -245,7 +245,7 @@ def runCommandProcessor(st: GlobalState):
                     command = data.decode('utf-8')
                     process_command(st, command)
                     conn.sendall(b"Command processed.\n")
-    except e:
+    except:
         print("Command processor is handling the following exception by cleanly shutting down:")
         traceback.print_exc()
     finally:
