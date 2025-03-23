@@ -128,7 +128,7 @@ def runCmd_impl(argList
     else:
         if shouldInterrupt():
             return None
-        process = subprocess.Popen(argList, shell=False, check=True)
+        process = subprocess.Popen(argList, shell=False)
         def interrupt():
             time.sleep(1)  # Wait a seconds before checking interrupt
             while not shouldInterrupt():
