@@ -1,7 +1,14 @@
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 
 sudo apt install -y rsync smbclient cifs-utils lftp curlftpfs
-sudo apt install -y rclone # if using rclone instead of curlftpfs
+
+# if using rclone instead of curlftpfs (newer version of rclone fixes TLS issues):
+#sudo apt install -y rclone
+mkdir iphone_libs
+cd iphone_libs
+wget https://downloads.rclone.org/v1.69.1/rclone-v1.69.1-linux-arm-v7.deb
+sudo dpkg -i rclone-v1.69.1-linux-arm-v7.deb
+cd ..
 
 # Try `netcat` but it might be renamed now to `netcat-traditional` or `netcat-openbsd`.
 sudo apt install -y netcat

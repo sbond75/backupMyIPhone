@@ -127,7 +127,7 @@ def runCmd(argList
            ):
     print('[ibackupServer] Running command:', argList)
 
-    if numTries <= 1:
+    if numTries >= 0:
         # Run without exception handler:
         return runCmd_impl(argList)
     else:
