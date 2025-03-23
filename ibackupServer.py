@@ -10,6 +10,7 @@ from shlex import quote
 import udidToFolderLookupTable
 import traceback
 import time
+import threading
 
 # Grab paths to stuff
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
@@ -101,7 +102,9 @@ def lookup_username(st: GlobalState, udid):
     # print("sys.path:", sys.path)
     return udidToFolderLookupTable.lookupTable[udid]
 
-def runCmd_impl(argList):
+def runCmd_impl(argList
+                , shouldInterrupt=None # optional function to run every second that returns true to abort the command.
+                ):
     # print("Environment Variables:")
     # for key, value in os.environ.items():
     #     print(f"{key}={value}")
@@ -120,24 +123,42 @@ def runCmd_impl(argList):
 
     sys.stdout.flush()
     sys.stderr.flush()
-    return subprocess.run(argList, shell=False, check=True)
+    if shouldInterrupt is None:
+        return subprocess.run(argList, shell=False, check=True)
+    else:
+        if shouldInterrupt():
+            return None
+        process = subprocess.Popen(argList, shell=False, check=True)
+        def interrupt():
+            time.sleep(1)  # Wait a seconds before checking interrupt
+            while not shouldInterrupt():
+                time.sleep(1)  # Wait a seconds before checking interrupt
+
+            print("[ibackupServer] Interrupting process...")
+            process.terminate()
+            #process.kill()
+        interrupt_thread = threading.Thread(target=interrupt)
+        process.wait()  # Waits but allows external termination
+        return process
 
 def runCmd(argList
            , numTries=1 # -1 to retry forever
+           , shouldRetry=lambda:True # optional function that returns true to indicate whether the command should be retried. Overrides `numTries` if it returns true.
+           , shouldInterrupt=None # optional function to run every second that returns true to abort the command.
            ):
     print('[ibackupServer] Running command:', argList)
 
     if numTries >= 0:
         # Run without exception handler:
-        return runCmd_impl(argList)
+        return runCmd_impl(argList, shouldInterrupt)
     else:
         tries = 0
         retrySeconds = 5
-        while numTries < 0 or tries < numTries:
+        while (numTries < 0 or tries < numTries) and shouldRetry():
             try:
                 if tries > 0:
                     print("[ibackupServer] Retrying now:")
-                return runCmd_impl(argList)
+                return runCmd_impl(argList, shouldInterrupt)
             except subprocess.CalledProcessError as e:
                 print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
                                                                                                                  #, e.output
@@ -147,12 +168,24 @@ def runCmd(argList
                 retrySeconds += 1
             tries += 1
 
+def isMounted(username_ftp):
+    # Check if it is mounted
+    try:
+        runCmd([sudoPath
+                , mountpointPath
+                , f"/home/{username_ftp}"])
+        mounted = True
+    except subprocess.CalledProcessError:
+        # It isn't mounted
+        mounted = False
+    return mounted
+
 def unmount(username_ftp):
     runCmd([sudoPath
         #, "umount"
         #, umountPath, "-f"
         , umountPath
-        , f"/home/{username_ftp}"], numTries=-1) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+        , f"/home/{username_ftp}"], numTries=-1, lambda: isMounted(username_ftp), lambda: not isMounted(username_ftp)) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
@@ -163,14 +196,7 @@ def start_backup(st: GlobalState, udid):
         st.backupStatus.set_was_backed_up(udid, "0")
     else:
         # Check if it is mounted
-        try:
-            runCmd([sudoPath
-                    , mountpointPath
-                    , f"/home/{username_ftp}"])
-            mounted = True
-        except subprocess.CalledProcessError:
-            # It isn't mounted
-            mounted = False
+        mounted = isMounted(username_ftp)
 
         if not mounted:
             # Bind user directory with bindfs (requires sudo)
