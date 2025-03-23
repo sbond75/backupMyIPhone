@@ -185,7 +185,7 @@ def unmount(username_ftp):
         #, "umount"
         #, umountPath, "-f"
         , umountPath
-        , f"/home/{username_ftp}"], numTries=-1, lambda: isMounted(username_ftp), lambda: not isMounted(username_ftp)) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+        , f"/home/{username_ftp}"], numTries=-1, shouldRetry=lambda: isMounted(username_ftp), shouldInterrupt=lambda: not isMounted(username_ftp)) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)
