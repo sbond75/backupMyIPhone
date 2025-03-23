@@ -135,14 +135,15 @@ def runCmd(argList
         retrySeconds = 5
         while numTries < 0 or tries < numTries:
             try:
+                if tries > 0:
+                    print("[ibackupServer] Retrying now:")
                 return runCmd_impl(argList)
             except subprocess.CalledProcessError as e:
                 print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
                                                                                                                  #, e.output
                                                                                                                  , retrySeconds
                                                                                                                  ))
-                #time.sleep(retrySeconds)
-                time.sleep(1)
+                time.sleep(retrySeconds)
                 retrySeconds += 1
             tries += 1
 
