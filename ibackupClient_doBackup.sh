@@ -351,7 +351,8 @@ function doBackup() {
 	elif [ "$config__syncMethod" == "mirror_pyftpsync" ]; then
 	    # Mirror with pyftpsync
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
-	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftp://$username:$password@$config__host/"
+	    echo .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftp://$username:$password@$config__host/" $syncFlags
+	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftp://$username:$password@$config__host/" $syncFlags
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
@@ -511,6 +512,11 @@ END_HEREDOC
 	    echo rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags
 	    rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags
 	    exitCode="$?"
+	elif [ "$config__syncMethod" == "mirror_pyftpsync" ]; then
+	    # Mirror with pyftpsync
+	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
+	    echo .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftp://$username:$password@$config__host/" $syncFlags
+	    .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftp://$username:$password@$config__host/" $syncFlags
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
 	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
