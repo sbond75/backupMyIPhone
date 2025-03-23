@@ -21,9 +21,9 @@ fi
 bash "$scriptDir/install_libimobiledevice_deps.sh"
 bash "$scriptDir/compile_libimobiledevice_imperatively.sh" 0
 
-# if using pyftpfs instead of rclone/curlftpfs:
+# if using pyftpsync instead of rclone/curlftpfs:
 python3 -m venv .venv
-.venv/bin/pip install pyftpfs
+.venv/bin/pip install pyftpsync
 
 # Make users and groups
 sudo useradd iosbackup_server
