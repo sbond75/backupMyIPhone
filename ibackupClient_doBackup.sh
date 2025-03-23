@@ -329,8 +329,8 @@ function doBackup() {
 	exitCode="$?"
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
-	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
-	    rsync --sparse --archive --verbose --human-readable --progress "$mountPoint" "$localDir"
+	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
+	    rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
 	    exitCode="$?"
 	    #bash
 	fi
@@ -479,8 +479,8 @@ END_HEREDOC
 	exitCode="$?"
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
-	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir" "$mountPoint"
-	    rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir" "$mountPoint"
+	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
+	    rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
 	    exitCode="$?"
 	fi
 	echo "[ibackupClient] Finished transfer of backup to server with exit code ${exitCode}."
