@@ -4,3 +4,4 @@ __pycache__/
 /udidToFolderLookupTable.py
 /config.sh
 /rclone.conf
+/.venv

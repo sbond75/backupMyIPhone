@@ -104,13 +104,13 @@ function finishedBackup_LED() {
 function make_rclone_config() {
     # Make rclone config:
     export RCLONE_CONFIG="$scriptDir/rclone.conf"
-    # rclone config create "myremote_$username" ftp env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-    # echo rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-    # rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    rclone config create "myremote_$username" ftp env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    echo rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
     
-    rclone config create "myremote_$username" ftp env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-    echo rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-    rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    # rclone config create "myremote_$username" ftp env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    # echo rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    # rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
 }
 
 function doBackup() {

@@ -31,6 +31,6 @@ config__localDiskPath="$config__localDisk/iOSBackups"
 # For remote backups: the device that should be mounted in order to access `config__localDiskPath`.
 config__localDiskDevice=/dev/disk/by-label/iOSBackupClient
 
-# For remote backups: syncing method. Supported values are "lftp" to use ftp syncing, "rsync_rclone" to use `rclone mount` folder syncing, `mirror_rclone` to use `rclone mirror` syncing, or "rsync_curlftpfs" to use curlftpfs mount folder syncing. "lftp" seems to have an issue where it hangs forever doing a bunch of file operations. So does `rsync_curlftpfs`.
-config__syncMethod='mirror_rclone'
+# For remote backups: syncing method. Supported values are "lftp" to use ftp syncing, "rsync_rclone" to use `rclone mount` folder syncing, `mirror_rclone` to use `rclone mirror` syncing, `mirror_pyftpsync` to use `pyftpsync` syncing, "rsync_curlftpfs" to use curlftpfs mount folder syncing. "lftp" seems to have an issue where it hangs forever doing a bunch of file operations. So does `rsync_curlftpfs`.
+config__syncMethod='mirror_pyftpsync'
 # #
