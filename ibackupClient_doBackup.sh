@@ -348,6 +348,10 @@ function doBackup() {
 	    echo rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags
 	    rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags
 	    exitCode="$?"
+	elif [ "$config__syncMethod" == "mirror_pyftpsync" ]; then
+	    # Mirror with pyftpsync
+	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
+	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftp://$username:$password@$config__host/"
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
