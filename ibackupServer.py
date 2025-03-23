@@ -138,7 +138,9 @@ def runCmd_impl(argList
             process.terminate()
             #process.kill()
         interrupt_thread = threading.Thread(target=interrupt)
+        interrupt_thread.start()
         process.wait()  # Waits but allows external termination
+        interrupt_thread.join()
         return process
 
 def runCmd(argList
