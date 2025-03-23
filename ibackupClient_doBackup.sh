@@ -233,7 +233,7 @@ function doBackup() {
 	if [ "$config__syncMethod" == "rsync_curlftpfs" ]; then
 	    # https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
 	    echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
-	    withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$(urlencode "$password")" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
+	    withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
 	    local curlftpfs_pid=$!
 	    # By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
@@ -548,7 +548,7 @@ END_HEREDOC
 	    # Mirror with pyftpsync
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
 	    echo .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
-	    .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:$password@$config__host:21/" $syncFlags
+	    .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
 	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
