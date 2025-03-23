@@ -141,7 +141,8 @@ def runCmd(argList
                                                                                                                  #, e.output
                                                                                                                  , retrySeconds
                                                                                                                  ))
-                time.sleep(retrySeconds)
+                #time.sleep(retrySeconds)
+                time.sleep(1)
                 retrySeconds += 1
             tries += 1
 
