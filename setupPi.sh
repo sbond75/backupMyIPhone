@@ -1,5 +1,8 @@
 scriptDir="$(dirname "${BASH_SOURCE[0]}")"
 
+cd "$scriptDir"
+git submodule update --init --recursive
+
 sudo apt install -y rsync smbclient cifs-utils lftp curlftpfs
 
 # if using rclone instead of curlftpfs (newer version of rclone fixes TLS issues):
@@ -23,7 +26,8 @@ bash "$scriptDir/compile_libimobiledevice_imperatively.sh" 0
 
 # if using pyftpsync instead of rclone/curlftpfs:
 python3 -m venv .venv
-.venv/bin/pip install pyftpsync
+#.venv/bin/pip install pyftpsync
+.venv/bin/pip install ./pyftpsync
 
 # Make users and groups
 sudo useradd iosbackup_server

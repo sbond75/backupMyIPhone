@@ -4,3 +4,6 @@
 [submodule "fuse/go-fuseftp"]
 	path = fuse/go-fuseftp
 	url = https://github.com/datawire/go-fuseftp
+[submodule "pyftpsync"]
+	path = pyftpsync
+	url = https://github.com/sbond75/pyftpsync
