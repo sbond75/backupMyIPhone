@@ -138,9 +138,9 @@ def runCmd(argList
                 return runCmd_impl(argList)
             except subprocess.CalledProcessError as e:
                 print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
-                                                                       #, e.output
-                                                                        retrySeconds
-                                                                       ))
+                                                                                                                 #, e.output
+                                                                                                                 , retrySeconds
+                                                                                                                 ))
                 time.sleep(retrySeconds)
                 retrySeconds += 1
             tries += 1
