@@ -8,6 +8,7 @@ function serverCmd_impl() {
 
     # `-v` for verbose (to show why connections fail, if they do)
     # `-N` to exit after sending ( https://unix.stackexchange.com/questions/332163/netcat-send-text-to-echo-service-read-reply-then-exit )
+    echo netcat -N -v "$config__host" "$config__serverCommands_port" '<<<' "$command $udid"
     netcat -N -v "$config__host" "$config__serverCommands_port" <<< "$command $udid" # (`<<<` is called a "here string" ( https://askubuntu.com/questions/443227/sending-a-simple-tcp-message-using-netcat , https://stackoverflow.com/questions/16045139/redirector-in-ubuntu )
 }
 
