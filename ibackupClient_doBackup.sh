@@ -113,6 +113,38 @@ function make_rclone_config() {
     # rclone config update "myremote_$username" env_auth=true tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
 }
 
+# From `rawurlencode` function on https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command/10660730#10660730
+function urlencode() {
+  local string="${1}"
+  local strlen=${#string}
+  local encoded=""
+  local pos c o
+
+  for (( pos=0 ; pos<strlen ; pos++ )); do
+     c=${string:$pos:1}
+     case "$c" in
+        [-_.~a-zA-Z0-9] ) o="${c}" ;;
+        * )               printf -v o '%%%02x' "'$c"
+     esac
+     encoded+="${o}"
+  done
+  echo "${encoded}"    # You can either set a return variable (FASTER) 
+  #REPLY="${encoded}"   #+or echo the result (EASIER)... or both... :p
+}
+# Also from the above link:
+# Returns a string in which the sequences with percent (%) signs followed by
+# two hex digits have been replaced with literal characters.
+function urldecode() {
+
+  # This is perhaps a risky gambit, but since all escape characters must be
+  # encoded, we can replace %NN with \xNN and pass the lot to printf -b, which
+  # will decode hex for us
+
+  printf -v REPLY '%b' "${1//%/\\x}" # You can either set a return variable (FASTER)
+
+  echo "${REPLY}"  #+or echo the result (EASIER)... or both... :p
+}
+
 function doBackup() {
     # # Delay to prevent it not being found
     # #local sl=2
@@ -201,7 +233,7 @@ function doBackup() {
 	if [ "$config__syncMethod" == "rsync_curlftpfs" ]; then
 	    # https://serverfault.com/questions/115307/mount-an-ftps-server-to-a-linux-directory-but-get-access-denied-530-error : "You can try -o ssl"
 	    echo curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" '&'
-	    withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$password" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
+	    withOutputErrorChecking curlftpfs -f -o "ssl,cacert=${config__certPath},no_verify_hostname,user=$username:$(urlencode "$password")" "$config__host" "$mountPoint" & # FIXME: if password has commas it will probably break this `user=` stuff
 	    local curlftpfs_pid=$!
 	    # By default, curlftpfs runs in the "background" (as a daemon sort of process it seems -- parented to the root PID). You can use `-f` to run it in foreground ( https://linux.die.net/man/1/curlftpfs ), so we run it in foreground so it terminates on exit of this script.
 	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
@@ -352,7 +384,7 @@ function doBackup() {
 	    # Mirror with pyftpsync
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
 	    echo .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
-	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:$password@$config__host:21/" $syncFlags
+	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
