@@ -26,6 +26,7 @@ mkShell {
     pkg-config
 
     python3
+    (callPackage ./pyftpsync.nix {buildPythonPackage=python3Packages.buildPythonPackage; pythonOlder=python3Packages.pythonOlder; fetchPypi=python3Packages.fetchPypi; isPyPy=python3Packages.isPyPy; pytestCheckHook=python3Packages.pytestCheckHook; pysftp=python3Packages.pysftp; colorama=python3Packages.colorama; keyring=python3Packages.keyring; pyyaml=python3Packages.pyyaml;})
     util-linux
     lsof
     (callPackage ./btrbk.nix {})
