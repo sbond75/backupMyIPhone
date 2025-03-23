@@ -54,6 +54,7 @@ useLocalDiskThenTransfer="$3" # Optional; set to `1` to use `config__localDiskPa
 downloadFromServerFirst="$4" # Optional; set to `0` to not download the existing server files from the server first.
 indicateOnLED="$5" # Optional; set to `1` to indicate backup status on the LED of this computer as a raspberry pi using `/sys/class/leds/led0/trigger` (or `/sys/class/leds/PWR/trigger` on Linux 6.1 and up). If set to 1, this script will (at startup) check its permissions and adjust them to be owned by `pi` user if needed.
 skipActualBackup="$6" # Optional; set to `1` to do everything except the actual backup. This can include transfering the existing local disk to the server, which would normally be done post-backup.
+syncFlags="$7" # Optional; set to some arguments for rsync or rclone to specify more options. For example, `--dry-run -v` (or more `-v`'s for more verbosity) to do a dry-run of any sync operations that rclone does.
 
 if [ -z "$downloadFromServerFirst" ]; then
     downloadFromServerFirst=1
@@ -82,7 +83,7 @@ fi
 # Re-run with tee if needed
 if [ -z "$ranWithTeeAlready" ]; then
     echo "[ibackupClient] Running with tee to logfile $logfile"
-    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" "$downloadFromServerFirst" "$indicateOnLED" "$skipActualBackup" 2>&1 | tee_with_timestamps "$logfile"
+    bash "$0" "$logfile" "$firstTime" "$useLocalDiskThenTransfer" "$downloadFromServerFirst" "$indicateOnLED" "$skipActualBackup" "$syncFlags" 2>&1 | tee_with_timestamps "$logfile"
     exit
 fi
 # #

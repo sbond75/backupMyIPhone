@@ -101,6 +101,14 @@ function finishedBackup_LED() {
 }
 # #
 
+function make_rclone_config() {
+    # Make rclone config:
+    export RCLONE_CONFIG="$scriptDir/rclone.conf"
+    rclone config create "myremote_$username" ftp env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    echo rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+    rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+}
+
 function doBackup() {
     # # Delay to prevent it not being found
     # #local sl=2
@@ -195,10 +203,8 @@ function doBackup() {
 	    # Also note that curlftpfs seems to hang around in the background until `umount` or `fusermount -u` is run on the mount point for FTP, so that might be fine since this script also unmounts the filesystem at exit..
 	elif [ "$config__syncMethod" == "rsync_rclone" ]; then
 	    # Make rclone config:
-	    export RCLONE_CONFIG="$scriptDir/rclone.conf"
-	    rclone config create "myremote_$username" ftp env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-	    echo rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
-	    rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
+	    make_rclone_config
+
 	    # rclone mount:
 
 	    #echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
@@ -208,7 +214,6 @@ function doBackup() {
 	    # rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode writes &
 	    echo rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode off '&'
 	    rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode off &
-	    # TODO: Try using `rclone sync` or `rclone copy` instead of rsync.
 	    local curlftpfs_pid=$!
 	fi
 
@@ -331,6 +336,13 @@ function doBackup() {
     bye
     " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
+	elif [ "$config__syncMethod" == "mirror_rclone" ]; then
+	    # Make rclone config:
+	    make_rclone_config
+	    
+	    # Mirror with rclone (could also use `rclone copy` but this deletes files that are on the destination but not the source, too):
+	    echo rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags '&'
+	    rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags &
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
@@ -482,6 +494,13 @@ END_HEREDOC
     bye
     " # note: `xfer:timeout` is set to 60 so it doesn't hang forever if network cuts out. `net:timeout` is set in case it is needed.. ( https://lftp.yar.ru/lftp-man.html )
 	exitCode="$?"
+	elif [ "$config__syncMethod" == "mirror_rclone" ]; then
+	    # Make rclone config:
+	    make_rclone_config
+	    
+	    # Mirror with rclone (could also use `rclone copy` but this deletes files that are on the destination but not the source, too):
+	    echo rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags '&'
+	    rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags &
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
 	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
