@@ -341,8 +341,9 @@ function doBackup() {
 	    make_rclone_config
 	    
 	    # Mirror with rclone (could also use `rclone copy` but this deletes files that are on the destination but not the source, too):
-	    echo rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags '&'
-	    rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags &
+	    echo rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags
+	    rclone sync --ftp-no-check-certificate "myremote_$username:/" "$localDir" $syncFlags
+	    exitCode="$?"
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
@@ -499,8 +500,9 @@ END_HEREDOC
 	    make_rclone_config
 	    
 	    # Mirror with rclone (could also use `rclone copy` but this deletes files that are on the destination but not the source, too):
-	    echo rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags '&'
-	    rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags &
+	    echo rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags
+	    rclone sync --ftp-no-check-certificate "$localDir" "myremote_$username:/" $syncFlags
+	    exitCode="$?"
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
 	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"

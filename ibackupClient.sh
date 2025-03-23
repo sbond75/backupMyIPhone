@@ -180,7 +180,7 @@ END_HEREDOC
 		continue
 	    fi
 
-	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" downloadFromServerFirst="$downloadFromServerFirst" skipActualBackup="$skipActualBackup" bash ibackupClient_doBackup.sh & # Spawn background process
+	    dest="$dest" udid="$udid" useLocalDiskThenTransfer="$useLocalDiskThenTransfer" firstTime="$firstTime" downloadFromServerFirst="$downloadFromServerFirst" skipActualBackup="$skipActualBackup" syncFlags="$syncFlags" bash ibackupClient_doBackup.sh & # Spawn background process
 	    #source ibackupClient_doBackup.sh
 
 	    # Save background process's PID
