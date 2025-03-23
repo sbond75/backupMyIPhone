@@ -281,7 +281,11 @@ function doBackup() {
     fi
     if [ "$useLocalDiskThenTransfer" == "1" ]; then
 	# Local disk to use
-	echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
+	if [ "$downloadFromServerFirst" == "1" ]; then
+	    echo "[ibackupClient] After downloading server contents, will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
+	else
+	    echo "[ibackupClient] Will back up to local location $config__localDiskPath (on disk $config__localDisk) and then transfer to server."
+	fi
 	destFull="$config__localDiskPath/${userFolderName}"
 
 	# Mount if needed
@@ -445,6 +449,7 @@ END_HEREDOC
 	echo "[ibackupClient] Backup finished with exit code ${exitCode}."
     else
 	echo '[ibackupClient] Backup skipped due to `skipActualBackup` being 1.'
+	local exitCode="0"
     fi
 
     if [ "$exitCode" == "0" ] && [ "$useLocalDiskThenTransfer" == "1" ]; then
