@@ -9,6 +9,7 @@ import re
 from shlex import quote
 import udidToFolderLookupTable
 import traceback
+import time
 
 # Grab paths to stuff
 bindfsPath = subprocess.run(["which", "bindfs"], capture_output=True, check=True, text=True).stdout[:-1] # (trim trailing newline)
@@ -100,9 +101,7 @@ def lookup_username(st: GlobalState, udid):
     # print("sys.path:", sys.path)
     return udidToFolderLookupTable.lookupTable[udid]
 
-def runCmd(argList):
-    print('[ibackupServer] Running command:', argList)
-
+def runCmd_impl(argList):
     # print("Environment Variables:")
     # for key, value in os.environ.items():
     #     print(f"{key}={value}")
@@ -123,12 +122,35 @@ def runCmd(argList):
     sys.stderr.flush()
     return subprocess.run(argList, shell=False, check=True)
 
+def runCmd(argList
+           , numTries=1 # -1 to retry forever
+           ):
+    print('[ibackupServer] Running command:', argList)
+
+    if tries <= 1:
+        # Run without exception handler:
+        return runCmd_impl(argList)
+    else:
+        tries = 0
+        retrySeconds = 5
+        while numTries < 0 or tries < numTries:
+            try:
+                return runCmd_impl(argList)
+            except subprocess.CalledProcessError as e:
+                print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
+                                                                       #, e.output
+                                                                        retrySeconds
+                                                                       ))
+                time.sleep(retrySeconds)
+                retrySeconds += 1
+            tries += 1
+
 def unmount(username_ftp):
     runCmd([sudoPath
         #, "umount"
         #, umountPath, "-f"
         , umountPath
-        , f"/home/{username_ftp}"]) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
+        , f"/home/{username_ftp}"], numTries=-1) # (`sudo` is used; this requires a sudoers entry -- see README.md under the `## Server-client mode` section for more info)
 
 def start_backup(st: GlobalState, udid):
     username, username_ftp, dest = get_vars(st, udid)

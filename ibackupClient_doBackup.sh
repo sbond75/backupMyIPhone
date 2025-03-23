@@ -200,9 +200,13 @@ function doBackup() {
 	    echo rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
 	    rclone config update "myremote_$username" env_auth=true explicit_tls=true "pass=$password" "user=$username" "host=$config__host" "ca_cert=$config__certPath" "port=21" --non-interactive
 	    # rclone mount:
+
 	    #echo rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes '&'
 	    #rclone mount "ftps://$username:$password@$config__host:/" "$mountPoint" --vfs-cache-mode writes &
-	    echo rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode off &
+
+	    # echo rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode writes '&'
+	    # rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode writes &
+	    echo rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode off '&'
 	    rclone mount --ftp-no-check-certificate "myremote_$username:/" "$mountPoint" --vfs-cache-mode off &
 	    # TODO: Try using `rclone sync` or `rclone copy` instead of rsync.
 	    local curlftpfs_pid=$!
