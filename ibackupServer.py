@@ -286,6 +286,8 @@ def finish_backup(st: GlobalState, udid, unsuccessful):
 
 def make_snapshot(st: GlobalState, dest, username):
     print(f"Creating snapshot of {dest}")
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     # Load bash script
     subprocess.run(["bash", "-c", f"""
@@ -343,6 +345,8 @@ def runCommandProcessor(st: GlobalState):
                     command = data.decode('utf-8')
                     process_command(st, command)
                     print("Command processed.")
+                    sys.stdout.flush()
+                    sys.stderr.flush()
                     conn.sendall(b"Command processed.\n")
         unsuccessful = False
     except:

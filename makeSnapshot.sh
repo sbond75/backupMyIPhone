@@ -24,8 +24,10 @@ makeSnapshot()
 		echo "[ibackup] Fatal error: $dest/@iosBackups doesn't exist. It should have been created in firstTime setup earlier. Exiting."
 		exit 1
 	else
-	    if [ -z "$(ls -A $dest/@iosBackups)" ]; then # https://superuser.com/questions/352289/bash-scripting-test-for-empty-directory
-		echo "Empty $dest/@iosBackups folder, not snapshotting"
+	    # if [ -z "$(ls -A $dest/@iosBackups)" ]; then # https://superuser.com/questions/352289/bash-scripting-test-for-empty-directory
+	    # 	echo "Empty $dest/@iosBackups folder, not snapshotting"
+	    if false; then
+		:
 	    else
 		# Make snapshot first (to save old backup status before an incremental backup which updates the old contents in-place). Only happens if onchange (if it changed -- https://manpages.debian.org/testing/btrbk/btrbk.conf.5.en.html ) #
 		scriptDir="$(dirname "${BASH_SOURCE[0]}")"
