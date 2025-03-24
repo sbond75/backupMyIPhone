@@ -104,6 +104,7 @@ def lookup_username(st: GlobalState, udid):
 
 def runCmd_impl(argList
                 , shouldInterrupt=None # optional function to run every second that returns true to abort the command.
+                , timeout=None # optional timeout in seconds. Will terminate the command if this amount elapses before it finishes executing.
                 ):
     # print("Environment Variables:")
     # for key, value in os.environ.items():
@@ -124,7 +125,7 @@ def runCmd_impl(argList
     sys.stdout.flush()
     sys.stderr.flush()
     if shouldInterrupt is None:
-        return subprocess.run(argList, shell=False, check=True)
+        return subprocess.run(argList, shell=False, check=True, timeout=timeout)
     else:
         if shouldInterrupt():
             return None
@@ -140,24 +141,27 @@ def runCmd_impl(argList
             print("[ibackupServer] Interrupting process...")
             process.terminate()
             #process.kill()
+            print("[ibackupServer] Interrupted process.")
         interrupt_thread = threading.Thread(target=interrupt)
         interrupt_thread.start()
-        process.wait()  # Waits but allows external termination
+        process.wait(timeout=timeout)  # Waits but allows external termination
         print("[ibackupServer] Joining thread for process...")
         stop = True
         interrupt_thread.join()
+        print("[ibackupServer] Joined thread for process.")
         return process
 
 def runCmd(argList
            , numTries=1 # -1 to retry forever
            , shouldRetry=lambda:True # optional function that returns true to indicate whether the command should be retried. Overrides `numTries` if it returns true.
            , shouldInterrupt=None # optional function to run every second that returns true to abort the command.
+           , timeout=None # optional timeout in seconds. Will terminate the command if this amount elapses before it finishes executing.
            ):
     print('[ibackupServer] Running command:', argList)
 
     if numTries >= 0:
         # Run without exception handler:
-        return runCmd_impl(argList, shouldInterrupt)
+        return runCmd_impl(argList, shouldInterrupt, timeout)
     else:
         tries = 0
         retrySeconds = 5
@@ -165,7 +169,7 @@ def runCmd(argList
             try:
                 if tries > 0:
                     print("[ibackupServer] Retrying now:")
-                return runCmd_impl(argList, shouldInterrupt)
+                return runCmd_impl(argList, shouldInterrupt, timeout)
             except subprocess.CalledProcessError as e:
                 print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
                                                                                                                  #, e.output
@@ -173,6 +177,14 @@ def runCmd(argList
                                                                                                                  ))
                 time.sleep(retrySeconds)
                 retrySeconds += 1
+            except subprocess.TimeoutExpired as e:
+                print("[ibackupServer] Command `{}` timed out (ran longer than {}, exit code {}). Retrying in {} seconds...".format(e.cmd, timeout, e.returncode
+                                                                                                                                    , retrySeconds
+                                                                                                                                    ))
+                time.sleep(retrySeconds)
+                retrySeconds += 1
+                if timeout is not None: # (should always be true)
+                    timeout += 1
             tries += 1
 
 def isMounted(username_ftp):
@@ -180,7 +192,8 @@ def isMounted(username_ftp):
     try:
         runCmd([sudoPath
                 , mountpointPath
-                , f"/home/{username_ftp}"])
+                , f"/home/{username_ftp}"]
+               , timeout=2)
         mounted = True
     except subprocess.CalledProcessError:
         # It isn't mounted

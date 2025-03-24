@@ -385,6 +385,7 @@ function doBackup() {
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
 	    echo .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
 	    .venv/bin/pyftpsync -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
+	    exitCode="$?"
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
 	    echo rsync --sparse --archive --verbose --human-readable --progress "$mountPoint/" "$localDir"
@@ -549,6 +550,7 @@ END_HEREDOC
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
 	    echo .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
 	    .venv/bin/pyftpsync -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
+	    exitCode="$?"
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
 	    echo rsync --sparse --archive --verbose --human-readable --progress --no-perms --omit-dir-times "$localDir/" "$mountPoint"
