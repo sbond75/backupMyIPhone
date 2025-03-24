@@ -159,33 +159,51 @@ def runCmd(argList
            ):
     print('[ibackupServer] Running command:', argList)
 
+    resCmd = None
     if numTries >= 0:
         # Run without exception handler:
-        return runCmd_impl(argList, shouldInterrupt, timeout)
+        resCmd = runCmd_impl(argList, shouldInterrupt, timeout)
     else:
         tries = 0
         retrySeconds = 5
-        while (numTries < 0 or tries < numTries) and shouldRetry():
+        _canRetry = None
+        def canRetry():
+            return _canRetry or (numTries < 0 or tries < numTries) and shouldRetry()
+        def onRetry(exception):
+            nonlocal retrySeconds
+            nonlocal tries
+            nonlocal _canRetry
+            time.sleep(retrySeconds)
+            retrySeconds += 1
+            tries += 1
+            _canRetry = canRetry()
+            if not _canRetry:
+                print("[ibackupServer] Failed to run command despite retries. Re-raising exception:")
+                raise exception
+        while canRetry():
+            _canRetry = None # Reset to None
             try:
                 if tries > 0:
                     print("[ibackupServer] Retrying now:")
-                return runCmd_impl(argList, shouldInterrupt, timeout)
+                resCmd = runCmd_impl(argList, shouldInterrupt, timeout)
+                break
             except subprocess.CalledProcessError as e:
                 print("[ibackupServer] Command `{}` had non-zero exit code {}. Retrying in {} seconds...".format(e.cmd, e.returncode
                                                                                                                  #, e.output
                                                                                                                  , retrySeconds
                                                                                                                  ))
-                time.sleep(retrySeconds)
-                retrySeconds += 1
+                onRetry(e)
             except subprocess.TimeoutExpired as e:
                 print("[ibackupServer] Command `{}` timed out (ran longer than {}, exit code {}). Retrying in {} seconds...".format(e.cmd, timeout, e.returncode
                                                                                                                                     , retrySeconds
                                                                                                                                     ))
-                time.sleep(retrySeconds)
-                retrySeconds += 1
                 if timeout is not None: # (should always be true)
                     timeout += 1
-            tries += 1
+                onRetry(e)
+
+    print('[ibackupServer] Ran command {}:'.format("unsuccessfully" if resCmd is None else "successfully"), argList)
+    assert resCmd is not None # (shouldn't say `unsuccessfully` above)
+    return resCmd
 
 def isMounted(username_ftp):
     # Check if it is mounted
