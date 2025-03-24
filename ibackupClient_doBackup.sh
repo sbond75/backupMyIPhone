@@ -383,8 +383,8 @@ function doBackup() {
 	elif [ "$config__syncMethod" == "mirror_pyftpsync" ]; then
 	    # Mirror with pyftpsync
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
-	    echo .venv/bin/pyftpsync -v -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
-	    .venv/bin/pyftpsync -v -v download --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve remote --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
+	    echo .venv/bin/pyftpsync -v -v download --progress --no-verify-host-keys --no-keyring --no-netrc --delete --resolve remote --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
+	    .venv/bin/pyftpsync -v -v download --progress --no-verify-host-keys --no-keyring --no-netrc --delete --resolve remote --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
 	    exitCode="$?"
 	else
 	    # Use rsync from the curlftpfs/rclone mount to `$localDir`
@@ -548,8 +548,8 @@ END_HEREDOC
 	elif [ "$config__syncMethod" == "mirror_pyftpsync" ]; then
 	    # Mirror with pyftpsync
 	    # (Note: `$config__host` below can be followed by `:21` for a port for example.)
-	    echo .venv/bin/pyftpsync -v -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
-	    .venv/bin/pyftpsync -v -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --force --delete --resolve local --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
+	    echo .venv/bin/pyftpsync -v -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --delete --resolve local --report-problems "$localDir" "ftps://$username:password@$config__host:21/" $syncFlags
+	    .venv/bin/pyftpsync -v -v upload --progress --no-verify-host-keys --no-keyring --no-netrc --delete --resolve local --report-problems "$localDir" "ftps://$username:$(urlencode "$password")@$config__host:21/" $syncFlags
 	    exitCode="$?"
 	else
 	    # Use rsync from `$localDir` to the curlftpfs/rclone mount
