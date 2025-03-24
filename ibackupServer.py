@@ -130,11 +130,11 @@ def runCmd_impl(argList
         if shouldInterrupt():
             return None
         process = subprocess.Popen(argList, shell=False)
-        stop = False
+        stop_event = threading.Event()  # Thread-safe flag
         def interrupt():
             time.sleep(1)  # Wait a seconds before checking interrupt
             while not shouldInterrupt():
-                if stop:
+                if stop_event.is_set():  # Check the flag instead of a plain variable
                     return
                 time.sleep(1)  # Wait a seconds before checking interrupt
 
@@ -146,7 +146,7 @@ def runCmd_impl(argList
         interrupt_thread.start()
         process.wait(timeout=timeout)  # Waits but allows external termination
         print("[ibackupServer] Joining thread for process...")
-        stop = True
+        stop_event.set()  # Signal the thread to stop
         interrupt_thread.join()
         print("[ibackupServer] Joined thread for process.")
         return process
