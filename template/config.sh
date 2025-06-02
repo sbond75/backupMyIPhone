@@ -34,3 +34,11 @@ config__localDiskDevice=/dev/disk/by-label/iOSBackupClient
 # For remote backups: syncing method. Supported values are "lftp" to use ftp syncing, "rsync_rclone" to use `rclone mount` folder syncing, `mirror_rclone` to use `rclone mirror` syncing, `mirror_pyftpsync` to use `pyftpsync` syncing, "rsync_curlftpfs" to use curlftpfs mount folder syncing. "lftp" seems to have an issue where it hangs forever doing a bunch of file operations. So does `rsync_curlftpfs`.
 config__syncMethod='mirror_pyftpsync'
 # #
+
+# For `ibackupClient.py` new simple backup method #
+config__borgBackupUser='usernameHere'
+config__borgBackupIP='192.168.1.x'
+config__borgBackupPort=22
+config__borgRepoPath='/someBorgRepo'
+config__borgSSHPassword='passwordHere'
+# #
