@@ -394,7 +394,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
             "--remote-path", "/nix/store/yng7ci969cibdpnjxbmdm6s64i9jl0hp-borgbackup-1.2.3/bin/borg",
             repo,
             directory
-        ], env=env)
+        ], env=env, check=True)
 
         return result.returncode
 
