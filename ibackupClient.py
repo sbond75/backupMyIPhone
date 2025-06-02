@@ -175,8 +175,8 @@ parser.add_argument(
     default=False,         # Default value is False
     help='Allow the root user to run this script'
 )
-parser.add_argument("--ssh-extra-params", nargs='+', type=str,
-                    help="Extra parameters for SSH commands")
+parser.add_argument("--ssh-extra-params", type=str,
+                    help="Extra parameters for SSH commands as a single string")
 
 # Add the --logging flag, defaulting to True
 parser.add_argument(
@@ -422,7 +422,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
         extraParams = ' '.join(shlex.quote(x) for x in ssh_extra_params)
         # env["BORG_PASSPHRASE"] = password
         # https://old.reddit.com/r/BorgBackup/comments/191znug/is_there_a_one_liner_to_run_borg_create_while/
-        env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}{'' if len(extraParams) == 0 else ' '}{extraParams}"
+        env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}{'' if len(ssh_extra_params) == 0 else ' '}{extraParams}"
 
         # Run the borg backup command
         result = runCmd([
@@ -575,7 +575,10 @@ def run():
     backup_label = args.backup_label
     logging = args.logging
     allow_root = args.allow_root
-    ssh_extra_params = args.ssh_extra_params # (list)
+    ssh_extra_params = args.ssh_extra_params # string for now
+
+    # Convert string to list:
+    ssh_extra_params = shlex.split(ssh_extra_params)
 
     # Prepare to run
     if not allow_root and (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
