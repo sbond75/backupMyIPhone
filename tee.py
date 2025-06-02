@@ -17,6 +17,7 @@ def setup_logging(logfile: str):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            universal_newlines=True,
             bufsize=1,
             env=env
         )
