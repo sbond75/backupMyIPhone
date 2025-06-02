@@ -44,6 +44,7 @@ def setup_logging(logfile: str):
                 timestamped = f"{datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')} {line}"
                 print(timestamped, end='', flush=True)       # Print to terminal
                 log_file.write(timestamped)                  # Write to file
+                log_file.flush()
 
         process.wait()
         sys.exit(process.returncode)
