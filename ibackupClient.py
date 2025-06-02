@@ -132,6 +132,10 @@ parser.add_argument("indicate_on_led", nargs='?', action='store_true',
                     help="Enable LED indication")
 parser.add_argument("skip_actual_backup", nargs='?', action='store_true',
                     help="Flag to skip actual backup")
+parser.add_argument("backup-folder", nargs='?', type=str,
+                    help="Just back up a specific folder and do nothing else")
+parser.add_argument("backup-label", nargs='?', type=str,
+                    help="Label for the backup made with `--backup-folder`")
 
 # =========================
 # Global State Definition
@@ -243,6 +247,56 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
     print("[ibackupClient] Pairing and encryption complete.")
     return True
 
+
+def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Path:
+    """
+    Prepares the full path to where the iOS backup should be stored.
+    
+    Args:
+        st (GlobalState): The global state object.
+        udid (str): The UDID of the connected iOS device (with dashes).
+        first_time (bool): True if it's the first time the script is being run.
+    
+    Returns:
+        Path: The full destination path.
+    """
+
+    # Look up username and normalize
+    user_folder_name = lookup_username(st, udid)
+    user_folder_name = udidToFolderLookupTable.removeDashes_(user_folder_name)
+    print(f"[ibackupClient] User folder name: {user_folder_name}")
+
+    dest_full = Path(st.configDict['config__localDiskPath']) / user_folder_name
+
+    # Mount disk if specified
+    made_disk_mount = False
+    if st.configDict.get('config__localDisk') is not None:
+        try:
+            subprocess.run(
+                ["mountpoint", st.configDict['config__localDisk']],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        except subprocess.CalledProcessError:
+            try:
+                made_disk_mount = True
+                print(f"[ibackupClient] Mounting {st.configDict['config__localDisk']} from {st.configDict['config__localDiskDevice']}")
+                subprocess.run(["sudo", "mkdir", "-p", st.configDict['config__localDisk']], check=True)
+                subprocess.run(["sudo", "mount", st.configDict['config__localDiskDevice'], st.configDict['config__localDisk']], check=True)
+            except subprocess.CalledProcessError:
+                print("Error: failed to mount backup destination drive. Not backing up this device for now.")
+                return None
+
+    # Make destination directory
+    if first_time or made_disk_mount:
+        subprocess.run(["sudo", "mkdir", "-p", str(dest_full)], check=True)
+        subprocess.run(["sudo", "chown", "-R", os.getenv("USER"), st.configDict['config__localDiskPath']], check=True)
+    else:
+        dest_full.mkdir(parents=True, exist_ok=True)
+
+    return dest_full
+
 def run_backup(
     udid: str,
     dest_full: str,
@@ -285,38 +339,54 @@ def run_backup(
 # Borg backup
 # =========================
 
-def run_borg_backup(sshUser, ip, port, remote_repo_path, remote_backup_label, password):
-    # Generate timestamp in the format: YYYY-MM-DD-HH:MM:SS.nanoseconds
-    dt = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')  # .%f gives microseconds
-    dt = dt[:-3] + '000'  # Extend to nanoseconds (fake nanosecond resolution, just pad zeros)
+# Backs up the `directory`.
+def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backup_label, password, borg_lock: threading.Lock):
+    with borg_lock:  # <--- critical section protected by mutex
+        # # This is the dir to back up.
+        # os.chdir(directory)
 
-    # Construct full backup path
-    repo = f"ssh://{sshUser}@{ip}:{port}/{remote_repo_path}::{dt}_{remote_backup_label}"
+        # Generate timestamp in the format: YYYY-MM-DD-HH:MM:SS.nanoseconds
+        dt = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')  # .%f gives microseconds
+        dt = dt[:-3] + '000'  # Extend to nanoseconds (fake nanosecond resolution, just pad zeros)
 
-    env = os.environ.copy()
-    env["BORG_PASSPHRASE"] = password
+        # Construct full backup path
+        repo = f"ssh://{sshUser}@{ip}:{port}/{remote_repo_path}::{dt}_{remote_backup_label}"
 
-    # Run the borg backup command
-    result = subprocess.run([
-        "borg",
-        "create",
-        "--stats",
-        "--progress",
-        "--compression", "auto,lz4",
-        "--remote-path", "/nix/store/yng7ci969cibdpnjxbmdm6s64i9jl0hp-borgbackup-1.2.3/bin/borg",
-        repo
-    ], env=env)
+        env = os.environ.copy()
+        env["BORG_PASSPHRASE"] = password
 
-    return result.returncode
+        # Run the borg backup command
+        result = subprocess.run([
+            "borg",
+            "create",
+            "--stats",
+            "--progress",
+            "--compression", "auto,lz4",
+            "--remote-path", "/nix/store/yng7ci969cibdpnjxbmdm6s64i9jl0hp-borgbackup-1.2.3/bin/borg",
+            repo,
+            directory
+        ], env=env)
+
+        return result.returncode
+
+# Backs up the `directory`.
+def run_borg_backup_highlevel(st: GlobalState, directory, label, borg_lock: threading.Lock):
+    run_borg_backup(
+        directory=directory,
+        user=st.configDict['config__borgBackupUser'],
+        ip=st.configDict['config__borgBackupIP'],
+        port=st.configDict['config__borgBackupPort'],
+        remote_repo_path=st.configDict['config__borgRepoPath'],
+        remote_backup_label=label,
+        password=st.configDict['config__borgSSHPassword'],
+        borg_lock=borg_lock
+    )
 
 # =========================
 # Device Parser
 # =========================
 
-def parse_output(st: GlobalState, led_state: LEDState,
-    dest, first_time,
-    skip_actual_backup, script_dir
-):
+def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_backup, script_dir):
     regex = re.compile(r"^(?:\[\d+:\d+:\d+\.\d+\]\[\d+\] )?Got serial '([^']*)' for device .*$")
 
     def signal_handler(sig, frame):
@@ -337,6 +407,8 @@ def parse_output(st: GlobalState, led_state: LEDState,
         stderr=subprocess.STDOUT,
         text=True
     )
+
+    borg_lock = threading.Lock()
 
     for line in process.stdout:
         print(line, end="")
@@ -360,13 +432,15 @@ def parse_output(st: GlobalState, led_state: LEDState,
         if skip:
             continue
 
-        success = pair_and_enable_encryption(udid=udid, first_time=(first_time == "1"))
+        success = pair_and_enable_encryption(udid=udid, first_time=first_time)
         if not success:
             print(f"[ibackupClient] Skipping backup for {udid} due to pairing/encryption failure.")
             continue
 
         # Do backup ####################################################################################
-        dest_full = str(Path(dest) / udid)
+
+        # Prepare backup path
+        dest_full = prepare_backup_path(st, udid, first_time)
 
         def backup_thread():
             success = run_backup(
@@ -379,14 +453,7 @@ def parse_output(st: GlobalState, led_state: LEDState,
             
             if success:
                 # Save the backup with Borg
-                run_borg_backup(
-                    user=st.configDict['config__borgBackupUser'],
-                    ip=st.configDict['config__borgBackupIP'],
-                    port=st.configDict['config__borgBackupPort'],
-                    remote_repo_path=st.configDict['config__borgRepoPath'],
-                    remote_backup_label='AutomaticBackup_' + username + "_" + udid,
-                    password=st.configDict['config__borgSSHPassword']
-                )
+                run_borg_backup_highlevel(st, directory=dest_full, label='AutomaticBackup_' + username + "_" + udid, borg_lock=borg_lock)
 
         t = threading.Thread(target=backup_thread, name=f"backup-{udid}")
         t.start()
@@ -429,6 +496,8 @@ def run():
     first_time = args.first_time
     indicate_on_led = args.indicate_on_led
     skip_actual_backup = args.skip_actual_backup
+    backup_folder = args.backup_folder
+    backup_label = args.backup_label
 
     # Prepare to run
     if os.geteuid() == 0:
@@ -457,16 +526,22 @@ def run():
     global _led_state
     _led_state = led_state
 
-    # Run usbmuxd output parser
     st = GlobalState(config_dict)
-    parse_output(
-        st=st,
-        led_state=led_state,
-        dest=str(dest),
-        first_time=first_time,
-        skip_actual_backup=skip_actual_backup,
-        script_dir=scriptPath
-    )
+    if backup_folder is not None:
+        assert backup_label is not None
+
+        # Just back up the given folder:
+        borg_lock = threading.Lock()
+        run_borg_backup_highlevel(st, backup_folder, backup_label, borg_lock)
+    else:
+        # Run usbmuxd output parser
+        parse_output(
+            st=st,
+            led_state=led_state,
+            first_time=first_time,
+            skip_actual_backup=skip_actual_backup,
+            script_dir=scriptPath
+        )
 
 if __name__ == '__main__':
     run()
