@@ -70,6 +70,10 @@ def parse_config(file_path):
                 key, value = line.split('=', 1)
                 key = key.strip()
                 value = value.strip()
+
+                # Remove surrounding quotes if present (single or double)
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                    value = value[1:-1]
                 
                 # Perform variable substitution
                 def substitute_variable(match):
