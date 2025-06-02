@@ -100,8 +100,8 @@ def on_exit():
 
         _led_state.reset_led()
 
-    # Perform normal cleanup if no exceptions or signals occurred
-    print("[ibackupClient] Setting normal LED in atexit handler.")
+        # Perform normal cleanup if no exceptions or signals occurred
+        print("[ibackupClient] Setting normal LED in atexit handler.")
 
 # Register the atexit handler
 atexit.register(on_exit)
