@@ -587,6 +587,7 @@ def run():
 
     # Sync network time
     runCmd(["timedatectl"], check=True)
+    print(1)
 
     scriptPath = os.path.dirname(os.path.realpath(__file__))
     configPath = os.path.join(scriptPath, "config.sh")
