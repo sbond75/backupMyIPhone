@@ -42,6 +42,9 @@ signal.signal(signal.SIGTERM, main_signal_handler)  # Handle termination signal
 
 # Custom handler for unhandled exceptions in the main thread
 def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+    global unhandled_exception_occurred
+    unhandled_exception_occurred = True
+
     # Log the exception type, value, and traceback
     print("[ibackupClient] Unhandled exception occurred!")
     print(f"[ibackupClient] Type: {exc_type}")
@@ -80,8 +83,8 @@ def on_exit():
     # Indicate error on LED if any
     if unhandled_exception_occurred or thread_exception_occurred:
         # slow blink to indicate exception
-        print("[ibackupClient] Setting LED very slow blink (every 2 seconds) in atexit handler.")
         if _led_state is not None:
+            print("[ibackupClient] Setting LED very slow blink (every 2 seconds) in atexit handler.")
             _led_state.start_blinking(2)
 
     # Check if an exception or signal occurred
@@ -102,6 +105,8 @@ def on_exit():
 
         # Perform normal cleanup if no exceptions or signals occurred
         print("[ibackupClient] Setting normal LED in atexit handler.")
+
+    print("[ibackupClient] No error in atexit handler.")
 
 # Register the atexit handler
 atexit.register(on_exit)
