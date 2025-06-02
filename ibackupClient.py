@@ -16,6 +16,7 @@ import argparse
 import threading
 import atexit
 import traceback
+from typing import Union
 
 # =========================
 # Signal handling, exception handling, and atexit stuff
@@ -270,7 +271,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
     return True
 
 
-def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Path | None:
+def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Union[Path, None]:
     """
     Prepares the full path to where the iOS backup should be stored.
     
