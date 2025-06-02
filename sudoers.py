@@ -5,6 +5,12 @@ import sys
 import tempfile
 
 def move_and_chmod_with_sudo(tempname, sudoers_file):
+    # Change owner with sudo
+    chown_cmd = ["sudo", "chown", "root", sudoers_file]
+    proc_chown = subprocess.run(chown_cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc_chown.returncode != 0:
+        raise RuntimeError(f"Failed to chown file with sudo:\n{proc_chown.stderr}")
+
     # Move file with sudo
     mv_cmd = ["sudo", "mv", tempname, sudoers_file]
     proc_mv = subprocess.run(mv_cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
