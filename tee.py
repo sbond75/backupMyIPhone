@@ -10,6 +10,7 @@ def setup_logging(logfile: str):
 
         env = os.environ.copy()
         env["IBACKUP_TEE_STARTED"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
 
         # Re-run this script via subprocess, capturing output
         process = subprocess.Popen(
@@ -17,7 +18,6 @@ def setup_logging(logfile: str):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            universal_newlines=True,
             bufsize=1,
             env=env
         )
