@@ -103,9 +103,22 @@ class GlobalState:
 # =========================
 
 def prepare_led_permissions(indicate):
-    led = "/sys/class/leds/led0/trigger"
-    led1 = "/sys/class/leds/PWR/brightness"
-    led_trigger1 = "/sys/class/leds/PWR/trigger"
+    if os.path.exists("/sys/class/leds/led0/brightness"):
+        # Older style LED paths
+        # LED file paths based on https://forums.raspberrypi.com/viewtopic.php?t=12530
+        led = "/sys/class/leds/led0/brightness"         #  led0 is the green one
+        led_trigger = "/sys/class/leds/led0/trigger"    # can reset LED to default blinking condition by echoing `mmc0` to this file
+
+        led1 = "/sys/class/leds/led1/brightness"        # led1 is the red one
+        led_trigger1 = "/sys/class/leds/led1/trigger"
+    else:
+        # Assume Linux 6.1 or greater LED paths
+        # https://github.com/MichaIng/DietPi/issues/6779
+        led = "/sys/class/leds/ACT/brightness"          # ACT is the green one
+        led_trigger = "/sys/class/leds/ACT/trigger"
+
+        led1 = "/sys/class/leds/PWR/brightness"         # PWR is the red one
+        led_trigger1 = "/sys/class/leds/PWR/trigger"
 
     if indicate:
         user = os.getenv("USER")
