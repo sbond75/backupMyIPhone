@@ -578,7 +578,7 @@ def run():
     ssh_extra_params = args.ssh_extra_params # string for now
 
     # Convert string to list:
-    ssh_extra_params = shlex.split(ssh_extra_params)
+    ssh_extra_params = shlex.split("" if ssh_extra_params is None else ssh_extra_params)
 
     # Prepare to run
     if not allow_root and (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
