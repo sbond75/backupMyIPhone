@@ -402,7 +402,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
 
         # Generate timestamp in the format: YYYY-MM-DD-HH:MM:SS.nanoseconds
         dt = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')  # .%f gives microseconds
-        dt = dt[:-3] + '000'  # Extend to nanoseconds (fake nanosecond resolution, just pad zeros)
+        dt = dt + '000'  # Extend to nanoseconds (fake nanosecond resolution, just pad zeros)
 
         # Construct full backup path
         repo = f"ssh://{sshUser}@{ip}:{port}/{remote_repo_path}::{dt}_{remote_backup_label}"
