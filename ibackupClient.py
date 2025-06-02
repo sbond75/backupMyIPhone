@@ -175,7 +175,7 @@ parser.add_argument(
     default=False,         # Default value is False
     help='Allow the root user to run this script'
 )
-parser.add_argument("--ssh-extra-params", nargs='*', type=str,
+parser.add_argument("--ssh-extra-params", nargs='+', type=str,
                     help="Extra parameters for SSH commands")
 
 # Add the --logging flag, defaulting to True
