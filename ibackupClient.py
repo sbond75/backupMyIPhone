@@ -18,6 +18,7 @@ import atexit
 import traceback
 from typing import Union
 import shlex
+from tee import setup_logging
 
 # =========================
 # Signal handling, exception handling, and atexit stuff
@@ -539,28 +540,6 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
                 break
         else:
             print(f"[ibackupClient] Warning: Couldn't save thread for UDID {udid}")
-
-# =========================
-# Logging setup
-# =========================
-
-# dup2's (works on windows/linux) to get stdout and stderr to go to stdout and stderr *but* also to the given log file path
-def setup_logging(logfile_path: str):
-    print("[ibackupClient] Starting logging to", logfile_path)
-    log_file = open(logfile_path, "w")
-
-    # Duplicate the file descriptor to both stdout and stderr
-    log_fd = log_file.fileno()
-    
-    sys.stdout.flush()
-    sys.stderr.flush()
-
-    os.dup2(log_fd, 1)  # stdout
-    os.dup2(log_fd, 2)  # stderr
-
-    # Optionally wrap the file in a stream for sys.stdout/sys.stderr
-    sys.stdout = os.fdopen(1, 'w', buffering=1)
-    sys.stderr = os.fdopen(2, 'w', buffering=1)
 
 # =========================
 # Run
