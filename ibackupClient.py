@@ -131,15 +131,15 @@ signal_handlers.append(handle_signal)
 
 parser = argparse.ArgumentParser(description="ibackupClient script")
 
-parser.add_argument("first_time", action='store_true',
+parser.add_argument("--first-time", action='store_true',
                     help="Indicates if first time backup")
-parser.add_argument("indicate_on_led", action='store_true',
+parser.add_argument("--indicate-on-led", action='store_true',
                     help="Enable LED indication")
-parser.add_argument("skip_actual_backup", action='store_true',
-                    help="Flag to skip actual backup")
-parser.add_argument("backup-folder", nargs=1, type=str,
+parser.add_argument("--skip-actual-backup", action='store_true',
+                    help="Skip making a backup of the iOS device")
+parser.add_argument("--backup-folder", nargs=1, type=str,
                     help="Just back up a specific folder and do nothing else")
-parser.add_argument("backup-label", nargs=1, type=str,
+parser.add_argument("--backup-label", nargs=1, type=str,
                     help="Label for the backup made with `--backup-folder`")
 
 # =========================
