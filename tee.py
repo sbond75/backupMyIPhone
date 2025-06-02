@@ -2,10 +2,9 @@ import os
 import sys
 import subprocess
 
-def setup_logging(logfile: str, run):
+def setup_logging(logfile: str):
     if "IBACKUP_TEE_STARTED" not in os.environ:
         # First execution -- re-run with tee-like logging
-        logfile = "ibackup.log"
         print(f"[ibackupClient] Re-running with timestamped tee to {logfile}")
 
         env = os.environ.copy()
@@ -34,4 +33,4 @@ def setup_logging(logfile: str, run):
         sys.exit(process.returncode)
 
     # This is the second run: continue with actual logic
-    run()
+    # (We return to do that)
