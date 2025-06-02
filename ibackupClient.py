@@ -169,6 +169,12 @@ parser.add_argument("--backup-folder", type=str,
                     help="Just back up a specific folder and do nothing else")
 parser.add_argument("--backup-label", type=str,
                     help="Label for the backup made with `--backup-folder`")
+parser.add_argument(
+    '--allow-root',
+    action='store_true',  # If --logging is passed, logging will be True
+    default=False,         # Default value is False
+    help='Allow the root user to run this script'
+)
 
 # Add the --logging flag, defaulting to True
 parser.add_argument(
@@ -561,9 +567,10 @@ def run():
     backup_folder = args.backup_folder
     backup_label = args.backup_label
     logging = args.logging
+    allow_root = args.allow_root
 
     # Prepare to run
-    if (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
+    if not allow_root and (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
         print("This script should ideally be run as a non-root user. Exiting.")
         sys.exit(1)
 
