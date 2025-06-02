@@ -17,6 +17,7 @@ from typing import Union
 import shlex
 from tee import setup_logging
 import signal_handling
+import sudoers
 
 signal_handlers = None
 
@@ -25,6 +26,10 @@ signal_handlers = None
 # =========================
 
 def runCmd(first_arg, *args, **kwargs):
+    if isinstance(first_arg, list) and len(first_arg) > 0 and first_arg[0] == 'sudo':
+        print("[ibackupClient] Preparing to run sudo command:", ' '.join(first_arg))
+        sudoers.add_sudoers_rule(' '.join(shlex.quote(x) for x in first_arg))
+        
     print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.run(first_arg, *args, **kwargs)
 
@@ -103,7 +108,6 @@ def prepare_led_permissions(indicate):
         paths = [led, led_trigger1, led1]
         for path in paths:
             if not os.access(path, os.W_OK):
-                print(f"[ibackupClient] Running chown {user} {path}")
                 runCmd(["sudo", "chown", user, path], check=True)
         with open(led1, "w") as f:
             f.write("0")
