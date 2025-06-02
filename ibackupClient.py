@@ -567,6 +567,8 @@ def run():
 
         # Just back up the given folder:
         borg_lock = threading.Lock()
+        print(backup_folder)
+        print(backup_label)
         run_borg_backup_highlevel(st, backup_folder, backup_label, borg_lock)
     else:
         # Run usbmuxd output parser
