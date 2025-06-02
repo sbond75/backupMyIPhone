@@ -175,6 +175,8 @@ parser.add_argument(
     default=False,         # Default value is False
     help='Allow the root user to run this script'
 )
+parser.add_argument("--ssh-extra-params", nargs='*', type=str,
+                    help="Extra parameters for SSH commands")
 
 # Add the --logging flag, defaulting to True
 parser.add_argument(
@@ -196,10 +198,11 @@ parser.add_argument(
 # =========================
 
 class GlobalState:
-    def __init__(self, config_dict):
+    def __init__(self, config_dict, ssh_extra_params):
         self.configDict = config_dict
         self.udid_table_keys_array = list(udidToFolderLookupTable.lookupTable.keys())
         self.backup_pid: list[None|threading.Thread] = [None] * len(self.udid_table_keys_array)
+        self.ssh_extra_params = ssh_extra_params
 
 # =========================
 # LED Setup
@@ -401,7 +404,8 @@ def run_backup(
 def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backup_label
 #, password
 , sshKey
-, borg_lock: threading.Lock):
+, borg_lock: threading.Lock
+, ssh_extra_params: list):
     with borg_lock:  # <--- critical section protected by mutex
         # # This is the dir to back up.
         # os.chdir(directory)
@@ -414,9 +418,11 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
         repo = f"ssh://{sshUser}@{ip}:{port}/{remote_repo_path}::{dt}_{remote_backup_label}"
 
         env = os.environ.copy()
+
+        extraParams = ' '.join(shlex.quote(x) for x in ssh_extra_params)
         # env["BORG_PASSPHRASE"] = password
         # https://old.reddit.com/r/BorgBackup/comments/191znug/is_there_a_one_liner_to_run_borg_create_while/
-        env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}"
+        env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}{'' if len(extraParams) == 0 else ' '}{extraParams}"
 
         # Run the borg backup command
         result = runCmd([
@@ -443,7 +449,8 @@ def run_borg_backup_highlevel(st: GlobalState, directory, label, borg_lock: thre
         remote_backup_label=label,
         # password=st.configDict['config__borgSSHPassword'],
         sshKey=st.configDict['config__borgSSHPrivateKey'],
-        borg_lock=borg_lock
+        borg_lock=borg_lock,
+        ssh_extra_params=st.ssh_extra_params
     )
 
 # =========================
@@ -568,6 +575,7 @@ def run():
     backup_label = args.backup_label
     logging = args.logging
     allow_root = args.allow_root
+    ssh_extra_params = args.ssh_extra_params # (list)
 
     # Prepare to run
     if not allow_root and (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
@@ -597,7 +605,7 @@ def run():
     global _led_state
     _led_state = led_state
 
-    st = GlobalState(config_dict)
+    st = GlobalState(config_dict, ssh_extra_params)
     if backup_folder is not None:
         assert backup_label is not None
 
