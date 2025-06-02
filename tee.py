@@ -24,8 +24,8 @@ def setup_logging(logfile: str):
         assert process.stdout is not None
         with open(logfile, "w", buffering=1) as log_file:
             for line in process.stdout:
-                from time import strftime
-                timestamped = f"{strftime('%Y-%m-%d-%H:%M:%S.%f')} {line}"
+                from datetime import datetime
+                timestamped = f"{datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')} {line}"
                 print(timestamped, end='')       # Print to terminal
                 log_file.write(timestamped)      # Write to file
 

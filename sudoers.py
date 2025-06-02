@@ -2,6 +2,20 @@ import os
 import subprocess
 import getpass
 import sys
+import tempfile
+
+def move_and_chmod_with_sudo(tempname, sudoers_file):
+    # Move file with sudo
+    mv_cmd = ["sudo", "mv", tempname, sudoers_file]
+    proc_mv = subprocess.run(mv_cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc_mv.returncode != 0:
+        raise RuntimeError(f"Failed to move file with sudo:\n{proc_mv.stderr}")
+
+    # Change mode with sudo
+    chmod_cmd = ["sudo", "chmod", "440", sudoers_file]
+    proc_chmod = subprocess.run(chmod_cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc_chmod.returncode != 0:
+        raise RuntimeError(f"Failed to chmod file with sudo:\n{proc_chmod.stderr}")
 
 def add_sudoers_rule(command: str, username: str|None = None):
     """
@@ -36,22 +50,30 @@ def add_sudoers_rule(command: str, username: str|None = None):
     updated_lines = existing_lines + [line]
 
     # Write to temp file first
-    import tempfile
     with tempfile.NamedTemporaryFile("w", delete=False) as tf:
         tf.writelines(updated_lines)
         tempname = tf.name
 
-    # Validate the temp file syntax
-    # cmd = ["visudo", "-cf", tempname]
-    # proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    cmd = ["sudo", "visudo", "-cf", tempname]
-    proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if proc.returncode != 0:
-        print(f"Syntax error in sudoers file:\n{proc.stderr}")
-        os.unlink(tempname)
-        raise RuntimeError("Invalid sudoers syntax; aborting.")
+        try:
+            # Validate the temp file syntax
+            # cmd = ["visudo", "-cf", tempname]
+            # proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            cmd = ["sudo", "visudo", "-cf", tempname]
+            proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if proc.returncode != 0:
+                print(f"Syntax error in sudoers file:\n{proc.stderr}")
+                os.unlink(tempname)
+                raise RuntimeError("Invalid sudoers syntax; aborting.")
 
-    # Move temp file to sudoers.d (requires root)
-    os.rename(tempname, sudoers_file)
-    os.chmod(sudoers_file, 0o440)
-    print(f"Rule added to {sudoers_file} successfully.")
+            ## Move temp file to sudoers.d (requires root)
+            # os.rename(tempname, sudoers_file)
+            # os.chmod(sudoers_file, 0o440)
+
+            # Move temp file to sudoers.d (uses sudo)
+            move_and_chmod_with_sudo(tempname, sudoers_file)
+            print(f"Rule added to {sudoers_file} successfully.")
+        except:
+            # Delete tempfile on failure
+            if os.path.exists(tempname):
+                os.unlink(tempname)
+            raise
