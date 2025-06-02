@@ -1,43 +1,42 @@
-import sys
 import os
-import time
+import sys
+import subprocess
+import ibackupClient
 
-class Tee:
-    def __init__(self, file, stream):
-        self.file = file
-        self.stream = stream
+def main():
+    # Your actual script logic goes here
+    ibackupClient.run()
 
-    def write(self, message):
-        if message.strip() != "":
-            timestamped = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}"
-        else:
-            timestamped = message
-        self.file.write(timestamped)
-        self.stream.write(timestamped)
+def setup_logging(logfile: str):
+    if "IBACKUP_TEE_STARTED" not in os.environ:
+        # First execution -- re-run with tee-like logging
+        logfile = "ibackup.log"
+        print(f"[ibackupClient] Re-running with timestamped tee to {logfile}")
 
-    def flush(self):
-        self.file.flush()
-        self.stream.flush()
+        env = os.environ.copy()
+        env["IBACKUP_TEE_STARTED"] = "1"
 
-# def setup_logging(logfile_path: str):
-#     print("[ibackupClient] Starting logging to", logfile_path)
-#     log_file = open(logfile_path, "w", buffering=1)  # line-buffered
+        # Re-run this script via subprocess, capturing output
+        process = subprocess.Popen(
+            [sys.executable] + sys.argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=env
+        )
 
-#     sys.stdout = Tee(log_file, sys.__stdout__)
-#     sys.stderr = Tee(log_file, sys.__stderr__)
+        # Open log file for writing
+        assert process.stdout is not None
+        with open(logfile, "w", buffering=1) as log_file:
+            for line in process.stdout:
+                from time import strftime
+                timestamped = f"{strftime('%Y-%m-%d %H:%M:%S')} {line}"
+                print(timestamped, end='')       # Print to terminal
+                log_file.write(timestamped)      # Write to file
 
-# dup2's (works on windows/linux) to get stdout and stderr to go to stdout and stderr *but* also to the given log file path
-def setup_logging(logfile_path: str):
-    print(f"[ibackupClient] Starting logging to {logfile_path}")
+        process.wait()
+        sys.exit(process.returncode)
 
-    # Open log file and duplicate file descriptors
-    log_file = open(logfile_path, 'w', buffering=1)
-    log_fd = log_file.fileno()
-
-    # Duplicate stdout and stderr to the log file (for subprocesses)
-    os.dup2(log_fd, 1)  # fd 1 = stdout
-    os.dup2(log_fd, 2)  # fd 2 = stderr
-
-    # Replace sys.stdout and sys.stderr for Python prints (with timestamped Tee)
-    sys.stdout = Tee(log_file, sys.__stdout__)
-    sys.stderr = Tee(log_file, sys.__stderr__)
+    # This is the second run: continue with actual logic
+    main()
