@@ -38,6 +38,14 @@ def main_signal_handler(signum, frame):
     for handler in signal_handlers:
         handler(signum, frame)
 
+    # Exit as we normally would when getting this signal #
+    # Restore the default handler for this signal
+    signal.signal(signum, signal.SIG_DFL)
+    
+    # Re-raise the signal to perform the default action (exit)
+    os.kill(os.getpid(), signum)
+    # #
+
 signal.signal(signal.SIGINT, main_signal_handler)  # Handle Ctrl+C
 signal.signal(signal.SIGTERM, main_signal_handler)  # Handle termination signal
 
