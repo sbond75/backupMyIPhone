@@ -129,6 +129,22 @@ def handle_signal(signum, frame):
 signal_handlers.append(handle_signal)
 
 # =========================
+# Lib
+# =========================
+
+def runCmd(first_arg, *args, **kwargs):
+    print("[ibackupClient] Running command:", first_arg.join(' '))
+    return subprocess.run(first_arg, *args, **kwargs)
+
+def callCmd(first_arg, *args, **kwargs):
+    print("[ibackupClient] Running command:", first_arg.join(' '))
+    return subprocess.call(first_arg, *args, **kwargs)
+
+def popenCmd(first_arg, *args, **kwargs):
+    print("[ibackupClient] Running command:", first_arg.join(' '))
+    return subprocess.Popen(first_arg, *args, **kwargs)
+
+# =========================
 # Script Arguments (Globals)
 # =========================
 
@@ -187,7 +203,7 @@ def prepare_led_permissions(indicate):
         for path in paths:
             if not os.access(path, os.W_OK):
                 print(f"[ibackupClient] Running chown {user} {path}")
-                subprocess.run(["sudo", "chown", user, path], check=True)
+                runCmd(["sudo", "chown", user, path], check=True)
         with open(led1, "w") as f:
             f.write("0")
         #atexit.register(reset_led)
@@ -223,21 +239,21 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
 
     # ----- Pairing Loop -----
     print(f"[ibackupClient] Attempting to pair with device {udid}")
-    exit_code = subprocess.call(["idevicepair", "--udid", udid, "pair"])
+    exit_code = callCmd(["idevicepair", "--udid", udid, "pair"])
     attempt = 2
     while exit_code != 0:
         sleep_time = 8
         print(f"[ibackupClient] Sleeping for {sleep_time} seconds...")
         time.sleep(sleep_time)
         print(f"[ibackupClient] Retrying pair for {udid} after failing with exit code {exit_code} (attempt {attempt})")
-        exit_code = subprocess.call(["idevicepair", "--udid", udid, "pair"])
+        exit_code = callCmd(["idevicepair", "--udid", udid, "pair"])
         attempt += 1
 
     # ----- Enable Encryption -----
     print(f"[ibackupClient] Enabling backup encryption for {udid}")
     force_success = False
 
-    process = subprocess.Popen(
+    process = popenCmd(
         ["idevicebackup2", "--udid", udid, "-i", "encryption", "on"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -264,7 +280,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
             user_input = "n"
 
         if user_input.lower() == 'y':
-            result = subprocess.call(["idevicebackup2", "--udid", udid, "-i", "changepw"])
+            result = callCmd(["idevicebackup2", "--udid", udid, "-i", "changepw"])
             if result != 0:
                 print(f"[ibackupClient] Setting backup password failed with exit code {result}. Skipping this backup.")
                 return False
@@ -297,7 +313,7 @@ def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Union[P
     made_disk_mount = False
     if st.configDict.get('config__localDisk') is not None:
         try:
-            subprocess.run(
+            runCmd(
                 ["mountpoint", st.configDict['config__localDisk']],
                 check=True,
                 stdout=subprocess.DEVNULL,
@@ -307,18 +323,18 @@ def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Union[P
             try:
                 made_disk_mount = True
                 print(f"[ibackupClient] Mounting {st.configDict['config__localDisk']} from {st.configDict['config__localDiskDevice']}")
-                subprocess.run(["sudo", "mkdir", "-p", st.configDict['config__localDisk']], check=True)
-                subprocess.run(["sudo", "mount", st.configDict['config__localDiskDevice'], st.configDict['config__localDisk']], check=True)
+                runCmd(["sudo", "mkdir", "-p", st.configDict['config__localDisk']], check=True)
+                runCmd(["sudo", "mount", st.configDict['config__localDiskDevice'], st.configDict['config__localDisk']], check=True)
             except subprocess.CalledProcessError:
                 print("Error: failed to mount backup destination drive. Not backing up this device for now.")
                 return None
 
     # Make destination directory
     if first_time or made_disk_mount:
-        subprocess.run(["sudo", "mkdir", "-p", str(dest_full)], check=True)
+        runCmd(["sudo", "mkdir", "-p", str(dest_full)], check=True)
         user = os.getenv("USER")
         assert user is not None
-        subprocess.run(["sudo", "chown", "-R", user, st.configDict['config__localDiskPath']], check=True)
+        runCmd(["sudo", "chown", "-R", user, st.configDict['config__localDiskPath']], check=True)
     else:
         dest_full.mkdir(parents=True, exist_ok=True)
 
@@ -353,7 +369,7 @@ def run_backup(
     starting_backup_led()
 
     # Directly execute and stream output
-    result = subprocess.run(
+    result = runCmd(
         ["idevicebackup2", "--udid", udid, "backup", dest_full]
     )
 
@@ -385,7 +401,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
         # env["BORG_PASSPHRASE"] = password
 
         # Run the borg backup command
-        result = subprocess.run([
+        result = runCmd([
             "borg",
             "create",
             "--stats",
@@ -432,7 +448,7 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
     usbmuxd = shutil.which("usbmuxd")
     assert usbmuxd is not None
-    process = subprocess.Popen(
+    process = popenCmd(
         ["sudo", usbmuxd, "--foreground", "-v"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -539,7 +555,7 @@ def run():
         sys.exit(1)
 
     # Sync network time
-    subprocess.run(["timedatectl"], check=True)
+    runCmd(["timedatectl"], check=True)
 
     scriptPath = os.path.dirname(os.path.realpath(__file__))
     configPath = os.path.join(scriptPath, "config.sh")
