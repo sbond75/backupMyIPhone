@@ -142,6 +142,21 @@ parser.add_argument("--backup-folder", nargs=1, type=str,
 parser.add_argument("--backup-label", nargs=1, type=str,
                     help="Label for the backup made with `--backup-folder`")
 
+# Add the --logging flag, defaulting to True
+parser.add_argument(
+    '--logging',
+    action='store_true',  # If --logging is passed, logging will be True
+    default=True,         # Default value is True
+    help='Enable logging (default: enabled)'
+)
+# Add the --no-logging flag, which negates --logging
+parser.add_argument(
+    '--no-logging',
+    action='store_false', # If --no-logging is passed, logging will be False
+    dest='logging',       # Both flags modify the same `logging` variable
+    help='Disable logging'
+)
+
 # =========================
 # Global State Definition
 # =========================
@@ -503,6 +518,7 @@ def run():
     skip_actual_backup = args.skip_actual_backup
     backup_folder = args.backup_folder
     backup_label = args.backup_label
+    logging = args.logging
 
     # Prepare to run
     if os.geteuid() == 0:
@@ -516,15 +532,16 @@ def run():
     configPath = os.path.join(scriptPath, "config.sh")
     config_dict = parse_config(configPath)
 
-    dest = Path(config_dict['config__clientDirectory'])
-    dest.mkdir(parents=True, exist_ok=True)
+    if logging:
+        dest = Path(config_dict['config__clientDirectory'])
+        dest.mkdir(parents=True, exist_ok=True)
 
-    logs_dir = dest / "ibackupClientPy_logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    logfile = logs_dir / datetime.datetime.now().strftime("%Y-%m-%d %I-%M-%S %p.log.txt")
+        logs_dir = dest / "ibackupClientPy_logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        logfile = logs_dir / datetime.datetime.now().strftime("%Y-%m-%d %I-%M-%S %p.log.txt")
 
-    # Set up logging
-    setup_logging(str(logfile))
+        # Set up logging
+        setup_logging(str(logfile))
 
     # Set up LEDs
     led_state = prepare_led_permissions(indicate_on_led)
