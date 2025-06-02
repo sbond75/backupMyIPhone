@@ -55,6 +55,17 @@ class GlobalState:
 def parse_config(file_path):
     config_dict = {}
     variable_pattern = re.compile(r'\$([a-zA-Z_][0-9a-zA-Z_]*)')
+
+    def strip_trailing_comment(s):
+        in_single = in_double = False
+        for i, c in enumerate(s):
+            if c == "'" and not in_double:
+                in_single = not in_single
+            elif c == '"' and not in_single:
+                in_double = not in_double
+            elif c == '#' and not in_single and not in_double:
+                return s[:i].rstrip()
+        return s
     
     with open(file_path, 'r') as file:
         for line in file:
@@ -64,6 +75,9 @@ def parse_config(file_path):
             # Skip empty lines and comments (lines starting with '#')
             if not line or line.startswith('#'):
                 continue
+
+            # Remove trailing comment
+            line = strip_trailing_comment(line)
             
             # Split the line into key and value
             if '=' in line:
