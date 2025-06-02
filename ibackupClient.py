@@ -587,7 +587,6 @@ def run():
 
     # Sync network time
     runCmd(["timedatectl"], check=True)
-    print(1)
 
     scriptPath = os.path.dirname(os.path.realpath(__file__))
     configPath = os.path.join(scriptPath, "config.sh")
@@ -604,6 +603,7 @@ def run():
         # Set up logging
         setup_logging(str(logfile))
 
+    print(1)
     # Set up LEDs
     led_state = prepare_led_permissions(indicate_on_led)
     global _led_state
