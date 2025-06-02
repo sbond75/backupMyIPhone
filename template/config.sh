@@ -36,9 +36,10 @@ config__syncMethod='mirror_pyftpsync'
 # #
 
 # For `ibackupClient.py` new simple backup method #
-config__borgBackupUser='usernameHere'
+config__borgBackupUser='borg_iosbackup'
 config__borgBackupIP='192.168.1.x'
 config__borgBackupPort=22
 config__borgRepoPath='/someBorgRepo'
-config__borgSSHPassword='passwordHere'
+config__borgSSHPassword='passwordHere' # UNUSED. using ssh key instead (below).
+config__borgSSHPrivateKey='/home/user/.ssh/id_borg_iosbackup' # generate with `ssh-keygen -t ed25519 -b 4096 -f ~/.ssh/id_borg_iosbackup -C "borg-backup"`
 # #

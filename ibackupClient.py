@@ -17,6 +17,7 @@ import threading
 import atexit
 import traceback
 from typing import Union
+import shlex
 
 # =========================
 # Signal handling, exception handling, and atexit stuff
@@ -393,6 +394,7 @@ def run_backup(
 # Backs up the `directory`.
 def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backup_label
 #, password
+, sshKey
 , borg_lock: threading.Lock):
     with borg_lock:  # <--- critical section protected by mutex
         # # This is the dir to back up.
@@ -407,6 +409,8 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
 
         env = os.environ.copy()
         # env["BORG_PASSPHRASE"] = password
+        # https://old.reddit.com/r/BorgBackup/comments/191znug/is_there_a_one_liner_to_run_borg_create_while/
+        env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}"
 
         # Run the borg backup command
         result = runCmd([
@@ -432,6 +436,7 @@ def run_borg_backup_highlevel(st: GlobalState, directory, label, borg_lock: thre
         remote_repo_path=st.configDict['config__borgRepoPath'],
         remote_backup_label=label,
         # password=st.configDict['config__borgSSHPassword'],
+        sshKey=st.configDict['config__borgSSHPrivateKey'],
         borg_lock=borg_lock
     )
 
