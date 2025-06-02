@@ -51,7 +51,8 @@ def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     print(f"[ibackupClient] Type: {exc_type}")
     print(f"[ibackupClient] Value: {exc_value}")
     print("[ibackupClient] Traceback:")
-    traceback.print_tb(exc_traceback)
+    #traceback.print_tb(exc_traceback)
+    traceback.print_exception(exc_type, exc_value, exc_traceback)
 
     # You can perform additional cleanup or logging here
     # For example, releasing resources or saving state
@@ -70,7 +71,8 @@ def handle_thread_exception(args):
     print(f"[ibackupClient] Exception type: {args.exc_type}")
     print(f"[ibackupClient] Exception value: {args.exc_value}")
     print("[ibackupClient] Traceback:")
-    traceback.print_tb(args.exc_traceback)
+    #traceback.print_tb(args.exc_traceback)
+    traceback.print_exception(args.exc_type, args.exc_value, args.exc_traceback)
 
 # Set the custom exception hook for threads
 threading.excepthook = handle_thread_exception
@@ -84,7 +86,7 @@ def on_exit():
     # Indicate error on LED if any
     if unhandled_exception_occurred or thread_exception_occurred:
         # slow blink to indicate exception
-        if _led_state is not None:
+        if _led_state is not None and _led_state.indicate:
             print("[ibackupClient] Setting LED very slow blink (every 2 seconds) in atexit handler.")
             _led_state.start_blinking(2)
 
@@ -98,7 +100,7 @@ def on_exit():
         print("[ibackupClient] Exiting due to thread exception.")
         return
 
-    if _led_state is not None:
+    if _led_state is not None and _led_state.indicate:
         # # Turn led_state off
         # _led_state.solid_off()
 
