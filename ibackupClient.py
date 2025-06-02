@@ -464,7 +464,7 @@ def run():
         logfile = logs_dir / datetime.datetime.now().strftime("%Y-%m-%d %I-%M-%S %p.log.txt")
 
         # Set up logging
-        setup_logging(str(logfile))
+        setup_logging(str(logfile), run)
 
     # Install signal handlers
     global signal_handlers

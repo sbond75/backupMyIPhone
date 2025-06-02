@@ -1,13 +1,8 @@
 import os
 import sys
 import subprocess
-import ibackupClient
 
-def main():
-    # Your actual script logic goes here
-    ibackupClient.run()
-
-def setup_logging(logfile: str):
+def setup_logging(logfile: str, run):
     if "IBACKUP_TEE_STARTED" not in os.environ:
         # First execution -- re-run with tee-like logging
         logfile = "ibackup.log"
@@ -39,4 +34,4 @@ def setup_logging(logfile: str):
         sys.exit(process.returncode)
 
     # This is the second run: continue with actual logic
-    main()
+    run()
