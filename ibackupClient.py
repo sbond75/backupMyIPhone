@@ -133,15 +133,15 @@ signal_handlers.append(handle_signal)
 # =========================
 
 def runCmd(first_arg, *args, **kwargs):
-    print("[ibackupClient] Running command:", first_arg.join(' '))
+    print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.run(first_arg, *args, **kwargs)
 
 def callCmd(first_arg, *args, **kwargs):
-    print("[ibackupClient] Running command:", first_arg.join(' '))
+    print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.call(first_arg, *args, **kwargs)
 
 def popenCmd(first_arg, *args, **kwargs):
-    print("[ibackupClient] Running command:", first_arg.join(' '))
+    print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.Popen(first_arg, *args, **kwargs)
 
 # =========================
