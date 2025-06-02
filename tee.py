@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import signal
 
 def setup_logging(logfile: str):
     if "IBACKUP_TEE_STARTED" not in os.environ:
@@ -19,6 +20,21 @@ def setup_logging(logfile: str):
             bufsize=1,
             env=env
         )
+
+        # Signal forwarding handler
+        def forward_signal(signum, frame):
+            # Forward the signal to child
+            try:
+                process.send_signal(signum)
+            except ProcessLookupError:
+                pass  # Process already exited
+
+        # Register signals to forward
+        signals_to_forward = [signal.SIGINT, signal.SIGTERM]
+        if hasattr(signal, "SIGHUP"):
+            signals_to_forward.append(signal.SIGHUP)
+        for sig in signals_to_forward:
+            signal.signal(sig, forward_signal)
 
         # Open log file for writing
         assert process.stdout is not None
