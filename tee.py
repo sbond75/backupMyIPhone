@@ -42,8 +42,8 @@ def setup_logging(logfile: str):
             for line in process.stdout:
                 from datetime import datetime
                 timestamped = f"{datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')} {line}"
-                print(timestamped, end='')       # Print to terminal
-                log_file.write(timestamped)      # Write to file
+                print(timestamped, end='', flush=True)       # Print to terminal
+                log_file.write(timestamped)                  # Write to file
 
         process.wait()
         sys.exit(process.returncode)
