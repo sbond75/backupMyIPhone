@@ -60,29 +60,26 @@ def add_sudoers_rule(command: str, username: str|None = None):
         tf.writelines(updated_lines)
         tempname = tf.name
 
-        try:
-            # Validate the temp file syntax
-            # cmd = ["visudo", "-cf", tempname]
-            # proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            cmd = ["sudo", "visudo", "-cf", tempname]
-            proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            print(proc.returncode)
-            import pdb
-            pdb.set_trace()
-            if proc.returncode != 0:
-                print(f"Syntax error in sudoers file:\n{proc.stderr}")
-                os.unlink(tempname)
-                raise RuntimeError("Invalid sudoers syntax; aborting.")
+    try:
+        # Validate the temp file syntax
+        # cmd = ["visudo", "-cf", tempname]
+        # proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        cmd = ["sudo", "visudo", "-cf", tempname]
+        proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if proc.returncode != 0:
+            print(f"Syntax error in sudoers file:\n{proc.stderr}")
+            os.unlink(tempname)
+            raise RuntimeError("Invalid sudoers syntax; aborting.")
 
-            ## Move temp file to sudoers.d (requires root)
-            # os.rename(tempname, sudoers_file)
-            # os.chmod(sudoers_file, 0o440)
+        ## Move temp file to sudoers.d (requires root)
+        # os.rename(tempname, sudoers_file)
+        # os.chmod(sudoers_file, 0o440)
 
-            # Move temp file to sudoers.d (uses sudo)
-            move_and_chmod_with_sudo(tempname, sudoers_file)
-            print(f"Rule added to {sudoers_file} successfully.")
-        except:
-            # Delete tempfile on failure
-            if os.path.exists(tempname):
-                os.unlink(tempname)
-            raise
+        # Move temp file to sudoers.d (uses sudo)
+        move_and_chmod_with_sudo(tempname, sudoers_file)
+        print(f"Rule added to {sudoers_file} successfully.")
+    except:
+        # Delete tempfile on failure
+        if os.path.exists(tempname):
+            os.unlink(tempname)
+        raise
