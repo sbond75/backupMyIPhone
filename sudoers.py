@@ -66,6 +66,9 @@ def add_sudoers_rule(command: str, username: str|None = None):
             # proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             cmd = ["sudo", "visudo", "-cf", tempname]
             proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            print(proc.returncode)
+            import pdb
+            pdb.set_trace()
             if proc.returncode != 0:
                 print(f"Syntax error in sudoers file:\n{proc.stderr}")
                 os.unlink(tempname)
