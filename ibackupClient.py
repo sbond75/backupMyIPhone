@@ -30,7 +30,11 @@ def runCmd(first_arg, *args, **kwargs):
         print("[ibackupClient] Preparing to run sudo command:", ' '.join(first_arg))
         fullSudoPath = shutil.which('sudo')
         assert fullSudoPath is not None
-        sudoers.add_sudoers_rule(' '.join(shlex.quote(x) for x in ([fullSudoPath] + first_arg[1:])))
+        new_first_arg = [fullSudoPath] + first_arg[1:]
+        sudoers.add_sudoers_rule(' '.join(shlex.quote(x) for x in new_first_arg))
+
+        print("[ibackupClient] Running command:", ' '.join(new_first_arg))
+        return subprocess.run(new_first_arg, *args, **kwargs)
         
     print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.run(first_arg, *args, **kwargs)
