@@ -140,9 +140,9 @@ parser.add_argument("--indicate-on-led", action='store_true',
                     help="Enable LED indication")
 parser.add_argument("--skip-actual-backup", action='store_true',
                     help="Skip making a backup of the iOS device")
-parser.add_argument("--backup-folder", nargs=1, type=str,
+parser.add_argument("--backup-folder", type=str,
                     help="Just back up a specific folder and do nothing else")
-parser.add_argument("--backup-label", nargs=1, type=str,
+parser.add_argument("--backup-label", type=str,
                     help="Label for the backup made with `--backup-folder`")
 
 # Add the --logging flag, defaulting to True
@@ -567,8 +567,6 @@ def run():
 
         # Just back up the given folder:
         borg_lock = threading.Lock()
-        print(backup_folder)
-        print(backup_label)
         run_borg_backup_highlevel(st, backup_folder, backup_label, borg_lock)
     else:
         # Run usbmuxd output parser
