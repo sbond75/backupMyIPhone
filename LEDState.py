@@ -12,6 +12,7 @@ class LEDState:
         self._blink_thread = None
         self._stop_event = Event()
         self._trap_installed = False
+        self.reset_led = lambda: None
 
     # =========================
     # LED Control

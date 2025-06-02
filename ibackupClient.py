@@ -165,7 +165,7 @@ class GlobalState:
     def __init__(self, config_dict):
         self.configDict = config_dict
         self.udid_table_keys_array = list(udidToFolderLookupTable.lookupTable.keys())
-        self.backup_pid = [None] * len(self.udid_table_keys_array)
+        self.backup_pid: list[None|threading.Thread] = [None] * len(self.udid_table_keys_array)
 
 # =========================
 # LED Setup
@@ -178,6 +178,7 @@ def prepare_led_permissions(indicate):
 
     if indicate:
         user = os.getenv("USER")
+        assert user is not None
 
         paths = [led, led_trigger1, led1]
         for path in paths:
@@ -240,6 +241,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
         text=True
     )
 
+    assert process.stdout is not None
     for line in process.stdout:
         print(line.strip())
         if "ERROR: Backup encryption is already enabled. Aborting." in line:
@@ -268,7 +270,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
     return True
 
 
-def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Path:
+def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Path | None:
     """
     Prepares the full path to where the iOS backup should be stored.
     
@@ -311,7 +313,9 @@ def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Path:
     # Make destination directory
     if first_time or made_disk_mount:
         subprocess.run(["sudo", "mkdir", "-p", str(dest_full)], check=True)
-        subprocess.run(["sudo", "chown", "-R", os.getenv("USER"), st.configDict['config__localDiskPath']], check=True)
+        user = os.getenv("USER")
+        assert user is not None
+        subprocess.run(["sudo", "chown", "-R", user, st.configDict['config__localDiskPath']], check=True)
     else:
         dest_full.mkdir(parents=True, exist_ok=True)
 
@@ -360,20 +364,22 @@ def run_backup(
 # =========================
 
 # Backs up the `directory`.
-def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backup_label, password, borg_lock: threading.Lock):
+def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backup_label
+#, password
+, borg_lock: threading.Lock):
     with borg_lock:  # <--- critical section protected by mutex
         # # This is the dir to back up.
         # os.chdir(directory)
 
         # Generate timestamp in the format: YYYY-MM-DD-HH:MM:SS.nanoseconds
-        dt = datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')  # .%f gives microseconds
+        dt = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S.%f')  # .%f gives microseconds
         dt = dt[:-3] + '000'  # Extend to nanoseconds (fake nanosecond resolution, just pad zeros)
 
         # Construct full backup path
         repo = f"ssh://{sshUser}@{ip}:{port}/{remote_repo_path}::{dt}_{remote_backup_label}"
 
         env = os.environ.copy()
-        env["BORG_PASSPHRASE"] = password
+        # env["BORG_PASSPHRASE"] = password
 
         # Run the borg backup command
         result = subprocess.run([
@@ -393,12 +399,12 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
 def run_borg_backup_highlevel(st: GlobalState, directory, label, borg_lock: threading.Lock):
     run_borg_backup(
         directory=directory,
-        user=st.configDict['config__borgBackupUser'],
+        sshUser=st.configDict['config__borgBackupUser'],
         ip=st.configDict['config__borgBackupIP'],
         port=st.configDict['config__borgBackupPort'],
         remote_repo_path=st.configDict['config__borgRepoPath'],
         remote_backup_label=label,
-        password=st.configDict['config__borgSSHPassword'],
+        # password=st.configDict['config__borgSSHPassword'],
         borg_lock=borg_lock
     )
 
@@ -421,8 +427,10 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
     signal_handlers.append(signal_handler)
 
+    usbmuxd = shutil.which("usbmuxd")
+    assert usbmuxd is not None
     process = subprocess.Popen(
-        ["sudo", shutil.which("usbmuxd"), "--foreground", "-v"],
+        ["sudo", usbmuxd, "--foreground", "-v"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
@@ -430,6 +438,7 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
     borg_lock = threading.Lock()
 
+    assert process.stdout is not None
     for line in process.stdout:
         print(line, end="")
         match = regex.match(line)
@@ -461,11 +470,12 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
         # Prepare backup path
         dest_full = prepare_backup_path(st, udid, first_time)
+        assert dest_full is not None
 
         def backup_thread():
             success = run_backup(
                 udid=udid,
-                dest_full=dest_full,
+                dest_full=str(dest_full),
                 skip_actual_backup=skip_actual_backup,
                 starting_backup_led=lambda: led_state.solid_on(),
                 finished_backup_led=lambda success: led_state.solid_off() if success else led_state.start_blinking(0.1), # rapid blink for error indication if error occurred
@@ -521,7 +531,7 @@ def run():
     logging = args.logging
 
     # Prepare to run
-    if os.geteuid() == 0:
+    if (sys.platform == 'linux' or sys.platform == 'darwin') and os.geteuid() == 0:
         print("This script should ideally be run as a non-root user. Exiting.")
         sys.exit(1)
 
