@@ -63,6 +63,10 @@ def handle_thread_exception(args):
     #traceback.print_tb(args.exc_traceback)
     traceback.print_exception(args.exc_type, args.exc_value, args.exc_traceback)
 
+    if _led_state is not None and _led_state.indicate:
+        print("[ibackupClient] Setting LED slow blink (every 1 second) in thread exception handler.")
+        _led_state.start_blinking(1)
+
 # Set the custom exception hook for threads
 threading.excepthook = handle_thread_exception
 
