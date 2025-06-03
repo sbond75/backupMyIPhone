@@ -25,7 +25,7 @@ signal_handlers = None
 # Lib
 # =========================
 
-def runCmd(first_arg, *args, **kwargs):
+def runCmd(first_arg: list[str], *args, **kwargs):
     if isinstance(first_arg, list) and len(first_arg) > 0 and first_arg[0] == 'sudo':
         print("[ibackupClient] Preparing to run sudo command:", ' '.join(first_arg))
         fullSudoPath = shutil.which('sudo')
@@ -39,11 +39,11 @@ def runCmd(first_arg, *args, **kwargs):
     print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.run(first_arg, *args, **kwargs)
 
-def callCmd(first_arg, *args, **kwargs):
+def callCmd(first_arg: list[str], *args, **kwargs):
     print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.call(first_arg, *args, **kwargs)
 
-def popenCmd(first_arg, *args, **kwargs):
+def popenCmd(first_arg: list[str], *args, **kwargs):
     print("[ibackupClient] Running command:", ' '.join(first_arg))
     return subprocess.Popen(first_arg, *args, **kwargs)
 
@@ -460,13 +460,14 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
         # Do backup ####################################################################################
 
         # Prepare backup path
-        dest_full = prepare_backup_path(st, udid, first_time)
-        assert dest_full is not None
+        dest_full_: Path|None = prepare_backup_path(st, udid, first_time)
+        assert dest_full_ is not None
+        dest_full: str = str(dest_full_)
 
         def backup_thread():
             success = run_backup(
                 udid=udid,
-                dest_full=str(dest_full),
+                dest_full=dest_full,
                 skip_actual_backup=skip_actual_backup,
                 starting_backup_led=lambda: led_state.solid_on(),
                 finished_backup_led=lambda success: led_state.solid_off() if success else led_state.start_blinking(0.1), # rapid blink for error indication if error occurred
