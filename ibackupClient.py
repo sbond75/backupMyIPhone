@@ -186,7 +186,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
 
     assert process.stdout is not None
     for line in process.stdout:
-        print(line.strip())
+        print(line, end='')
         if "ERROR: Backup encryption is already enabled. Aborting." in line:
             force_success = True
 
@@ -292,15 +292,42 @@ def run_backup(
     print("[ibackupClient] Starting backup.")
     starting_backup_led()
 
-    # Directly execute and stream output
-    result = runCmd(
-        ["idevicebackup2", "--udid", udid, "backup", dest_full]
-    )
+    tryAgain = False # Assume False
+    retrySeconds = 1 # Assume 1
+    while True:
+        # Directly execute and stream output
+        process = popenCmd(
+            ["idevicebackup2", "--udid", udid, "backup", dest_full],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,  # ensures output is returned as text instead of bytes
+            bufsize=1   # line-buffered
+        )
 
-    finished_backup_led(result.returncode == 0)
+        # Print and collect output line by line
+        assert process.stdout is not None
+        for line in process.stdout:
+            print(line, end='')        # live output to terminal
 
-    print(f"[ibackupClient] Backup finished with exit code {result.returncode}.")
-    return result.returncode
+            if re.match(r"^No device found with udid.*", line):
+                # We need to try again.
+                tryAgain = True
+
+        process.wait()  # Wait for the process to finish
+        returncode = process.returncode  # Get the return code
+        
+        if tryAgain:
+            print("[ibackupClient]: Handling udid", udid, "not found: retrying again in", retrySeconds, "second(s)...")
+            time.sleep(retrySeconds)
+            retrySeconds += 1
+            tryAgain = False
+        else:
+            break
+
+    finished_backup_led(returncode == 0)
+
+    print(f"[ibackupClient] Backup finished with exit code {returncode}.")
+    return returncode
 
 # =========================
 # Borg backup
@@ -373,7 +400,7 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
             if pid and pid.is_alive():
                 print(f"[ibackupClient] Attempting to join thread {pid.name}")
                 pid.join(timeout=1)
-        led_state.solid_off()
+        #led_state.solid_off()
         sys.exit(0)
 
     assert isinstance(signal_handlers, list)
