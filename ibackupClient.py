@@ -405,7 +405,12 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
         skip = False
         for i, key in enumerate(st.udid_table_keys_array):
-            if key == udid and st.backup_pid[i]:
+            thread = st.backup_pid[i]
+            if thread is not None and not thread.is_alive():
+                # Ignore stopped thread
+                continue
+
+            if key == udid and thread:
                 print(f"[ibackupClient] Backup process for {udid} is already running.")
                 skip = True
                 break
