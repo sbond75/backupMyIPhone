@@ -29,6 +29,9 @@ python3 -m venv .venv
 #.venv/bin/pip install pyftpsync
 .venv/bin/pip install ./pyftpsync
 
+# if using `ibackupClient.py`
+sudo apt install -y borgbackup
+
 # Make users and groups
 sudo useradd iosbackup_server
 sudo groupadd iosbackup
