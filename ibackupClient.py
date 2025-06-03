@@ -292,8 +292,9 @@ def run_backup(
     print("[ibackupClient] Starting backup.")
     starting_backup_led()
 
-    tryAgain = False # Assume False
-    retrySeconds = 1 # Assume 1
+    tryAgain: bool = False # Assume False
+    retrySeconds: int = 1 # Assume 1
+    matched: list = [] # Assume empty list
     while True:
         # Directly execute and stream output
         process = popenCmd(
@@ -312,12 +313,18 @@ def run_backup(
             if re.match(r"^No device found with udid.*", line):
                 # We need to try again.
                 tryAgain = True
+                matched.append(line)
+            elif re.match(r"^ErrorCode 208: Device locked \(MBErrorDomain/208\)$", line):
+                # We need to wait for user to unlock it. We will try again a little later.
+                tryAgain = True
+                retrySeconds = 10
+                matched.append(line)
 
         process.wait()  # Wait for the process to finish
         returncode = process.returncode  # Get the return code
         
         if tryAgain:
-            print("[ibackupClient]: Handling udid", udid, "not found: retrying again in", retrySeconds, "second(s)...")
+            print(f"[ibackupClient]: Handling {matched}: retrying again in", retrySeconds, "second(s)...")
             time.sleep(retrySeconds)
             retrySeconds += 1
             tryAgain = False
