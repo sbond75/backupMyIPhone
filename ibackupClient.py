@@ -13,13 +13,32 @@ import time
 from LEDState import LEDState
 import argparse
 import threading
-from typing import Union
+from typing import Union, Final
 import shlex
 from tee import setup_logging
 import signal_handling
 import sudoers
 
+# =========================
+# Global variables
+# =========================
+
 signal_handlers = None
+
+# =========================
+# Global constants
+# =========================
+
+sudoPath: Final[str] = "sudo"
+
+fullSudoPath: Final[str|None] = shutil.which(sudoPath)
+assert fullSudoPath is not None
+borgPath: Final[str|None] = shutil.which("borg")
+assert borgPath is not None
+idevicebackup2Path: Final[str|None] = shutil.which("idevicebackup2")
+assert idevicebackup2Path is not None
+idevicepairPath: Final[str|None] = shutil.which("idevicepair")
+assert idevicepairPath is not None
 
 # =========================
 # Lib
@@ -28,8 +47,6 @@ signal_handlers = None
 def runCmd(first_arg: list[str], *args, **kwargs):
     if isinstance(first_arg, list) and len(first_arg) > 0 and first_arg[0] == 'sudo':
         print("[ibackupClient] Preparing to run sudo command:", ' '.join(first_arg))
-        fullSudoPath = shutil.which('sudo')
-        assert fullSudoPath is not None
         new_first_arg = [fullSudoPath] + first_arg[1:]
         sudoers.add_sudoers_rule(' '.join(shlex.quote(x) for x in new_first_arg))
 
@@ -127,7 +144,7 @@ def prepare_led_permissions(indicate):
         paths = [led, led_trigger1, led1]
         for path in paths:
             if not os.access(path, os.W_OK):
-                runCmd(["sudo", "chown", user, path], check=True)
+                runCmd([sudoPath, "chown", user, path], check=True)
         with open(led1, "w") as f:
             f.write("0")
         #atexit.register(reset_led)
@@ -163,14 +180,14 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
 
     # ----- Pairing Loop -----
     print(f"[ibackupClient] Attempting to pair with device {udid}")
-    exit_code = callCmd(["idevicepair", "--udid", udid, "pair"])
+    exit_code = callCmd([idevicepairPath, "--udid", udid, "pair"])
     attempt = 2
     while exit_code != 0:
         sleep_time = 8
         print(f"[ibackupClient] Sleeping for {sleep_time} seconds...")
         time.sleep(sleep_time)
         print(f"[ibackupClient] Retrying pair for {udid} after failing with exit code {exit_code} (attempt {attempt})")
-        exit_code = callCmd(["idevicepair", "--udid", udid, "pair"])
+        exit_code = callCmd([idevicepairPath, "--udid", udid, "pair"])
         attempt += 1
 
     # ----- Enable Encryption -----
@@ -178,7 +195,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
     force_success = False
 
     process = popenCmd(
-        ["idevicebackup2", "--udid", udid, "-i", "encryption", "on"],
+        [idevicebackup2Path, "--udid", udid, "-i", "encryption", "on"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
@@ -204,7 +221,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
             user_input = "n"
 
         if user_input.lower() == 'y':
-            result = callCmd(["idevicebackup2", "--udid", udid, "-i", "changepw"])
+            result = callCmd([idevicebackup2Path, "--udid", udid, "-i", "changepw"])
             if result != 0:
                 print(f"[ibackupClient] Setting backup password failed with exit code {result}. Skipping this backup.")
                 return False
@@ -247,18 +264,18 @@ def prepare_backup_path(st: GlobalState, udid: str, first_time: bool) -> Union[P
             try:
                 made_disk_mount = True
                 print(f"[ibackupClient] Mounting {st.configDict['config__localDisk']} from {st.configDict['config__localDiskDevice']}")
-                runCmd(["sudo", "mkdir", "-p", st.configDict['config__localDisk']], check=True)
-                runCmd(["sudo", "mount", st.configDict['config__localDiskDevice'], st.configDict['config__localDisk']], check=True)
+                runCmd([sudoPath, "mkdir", "-p", st.configDict['config__localDisk']], check=True)
+                runCmd([sudoPath, "mount", st.configDict['config__localDiskDevice'], st.configDict['config__localDisk']], check=True)
             except subprocess.CalledProcessError:
                 print("Error: failed to mount backup destination drive. Not backing up this device for now.")
                 return None
 
     # Make destination directory
     if first_time or made_disk_mount:
-        runCmd(["sudo", "mkdir", "-p", str(dest_full)], check=True)
+        runCmd([sudoPath, "mkdir", "-p", str(dest_full)], check=True)
         user = os.getenv("USER")
         assert user is not None
-        runCmd(["sudo", "chown", "-R", user, st.configDict['config__localDiskPath']], check=True)
+        runCmd([sudoPath, "chown", "-R", user, st.configDict['config__localDiskPath']], check=True)
     else:
         dest_full.mkdir(parents=True, exist_ok=True)
 
@@ -298,7 +315,7 @@ def run_backup(
     while True:
         # Directly execute and stream output
         process = popenCmd(
-            ["idevicebackup2", "--udid", udid, "backup", dest_full],
+            [idevicebackup2Path, "--udid", udid, "backup", dest_full],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,  # ensures output is returned as text instead of bytes
@@ -366,7 +383,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
 
         # Run the borg backup command
         result = runCmd([
-            "borg",
+            borgPath,
             "create",
             "--stats",
             "--progress",
@@ -416,7 +433,7 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
     usbmuxd = shutil.which("usbmuxd")
     assert usbmuxd is not None
     process = popenCmd(
-        ["sudo", usbmuxd, "--foreground", "-v"],
+        [sudoPath, usbmuxd, "--foreground", "-v"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
