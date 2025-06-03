@@ -34,17 +34,17 @@ class LEDState:
             except Exception as e:
                 print(f"[LEDState] Failed to reset LED trigger: {e}")
 
-    def install_trap(self):
-        if not self._trap_installed:
-            def handle_exit(signum, frame):
-                print("[LEDState] Caught exit signal, resetting LED...")
-                self.stop_blinking()
-                self.reset_to_default()
-                os._exit(0)  # Ensure we actually exit
+    # def install_trap(self):
+    #     if not self._trap_installed:
+    #         def handle_exit(signum, frame):
+    #             print("[LEDState] Caught exit signal, resetting LED...")
+    #             self.stop_blinking()
+    #             self.reset_to_default()
+    #             os._exit(0)  # Ensure we actually exit
 
-            signal.signal(signal.SIGTERM, handle_exit)
-            signal.signal(signal.SIGINT, handle_exit)
-            self._trap_installed = True
+    #         signal.signal(signal.SIGTERM, handle_exit)
+    #         signal.signal(signal.SIGINT, handle_exit)
+    #         self._trap_installed = True
 
     # =========================
     # LED Mode Changing
@@ -68,7 +68,7 @@ class LEDState:
 
         self._blink_thread = Thread(target=blink, daemon=True)
         self._blink_thread.start()
-        self.install_trap()
+        #self.install_trap()
 
     def stop_blinking(self):
         if self._blink_thread:
@@ -81,10 +81,10 @@ class LEDState:
         if self.indicate:
             self.stop_blinking()
             self.write_led("1")
-            self.install_trap()
+            #self.install_trap()
 
     def solid_off(self):
         if self.indicate:
             self.stop_blinking()
             self.write_led("0")
-            self.install_trap()
+            #self.install_trap()
