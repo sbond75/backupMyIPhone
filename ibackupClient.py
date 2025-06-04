@@ -40,6 +40,10 @@ assert idevicebackup2Path is not None
 idevicepairPath: Final[str|None] = shutil.which("idevicepair")
 assert idevicepairPath is not None
 
+# So `print` flushes. Not sure why this is needed, since we set
+# `PYTHONUNBUFFERED=1` in `tee.py`, but here it is.
+g_flush: Final[bool] = True
+
 # =========================
 # Lib
 # =========================
@@ -203,7 +207,7 @@ def pair_and_enable_encryption(udid: str, first_time: bool) -> bool:
 
     assert process.stdout is not None
     for line in process.stdout:
-        print(line, end='')
+        print(line, end='', flush=g_flush)
         if "ERROR: Backup encryption is already enabled. Aborting." in line:
             force_success = True
 
@@ -325,7 +329,7 @@ def run_backup(
         # Print and collect output line by line
         assert process.stdout is not None
         for line in process.stdout:
-            print(line, end='')        # live output to terminal
+            print(line, end='', flush=g_flush)        # live output to terminal
 
             if re.match(r"^No device found with udid.*", line):
                 # We need to try again.
@@ -380,6 +384,7 @@ def run_borg_backup(directory, sshUser, ip, port, remote_repo_path, remote_backu
         # env["BORG_PASSPHRASE"] = password
         # https://old.reddit.com/r/BorgBackup/comments/191znug/is_there_a_one_liner_to_run_borg_create_while/
         env["BORG_RSH"] = f"ssh -oBatchMode=yes -i {shlex.quote(sshKey)}{'' if len(ssh_extra_params) == 0 else ' '}{extraParams}"
+        env["BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK"] = "yes"
 
         # Run the borg backup command
         result = runCmd([
@@ -443,7 +448,7 @@ def parse_output(st: GlobalState, led_state: LEDState, first_time, skip_actual_b
 
     assert process.stdout is not None
     for line in process.stdout:
-        print(line, end="")
+        print(line, end="", flush=g_flush)
         match = regex.match(line)
         if not match:
             continue
